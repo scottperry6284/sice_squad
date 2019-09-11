@@ -21,3 +21,4 @@ declare -r BUILDER="$ROOT/build.sh"
 declare -r RUNNER="$ROOT/run.sh"
 
 export ROOT BUILDER RUNNER
+export SCALA_HOME='/usr/share/scala-2.11'
