@@ -46,20 +46,29 @@ tokens
 LCURLY options { paraphrase = "{"; } : "{";
 RCURLY options { paraphrase = "}"; } : "}";
 
-ID options { paraphrase = "an identifier"; } : 
-  ('a'..'z' | 'A'..'Z')+;
-
 // Note that here, the {} syntax allows you to literally command the lexer
 // to skip mark this token as skipped, or to advance to the next line
 // by directly adding Java commands.
 WS_ : (' ' | '\n' {newline();}) {_ttype = Token.SKIP; };
 SL_COMMENT : "//" (~'\n')* '\n' {_ttype = Token.SKIP; newline (); };
 
-CHAR : '\'' CHARINTERNAL '\'';
-STRING : '"' (CHARINTERNAL)* '"';
+CHARLITERAL : '\'' CHARINTERNAL '\'';
+STRINGLITERAL: '"' (CHARINTERNAL)* '"';
+ID options { paraphrase = "an identifier"; } : LETTER (LETTER|DIGIT)*;
+INTLITERAL: ('-'|) (("0x" (HEXDIGIT)(HEXDIGIT)*) | ((DIGIT)(DIGIT)*));
+OPERATOR: '+'|'-'|'*'|'/';
+RESERVED: "bool"|"break"|"import"|"continue"|"else"|"false"|"for"|"while"|"if"|"int"|"return"|"len"|"true"|"void";
+BOOLLITERAL: ("true"|"false");
 
 protected
-ESC :  '\\' ('n'|'\"'|'t'|'\\'|'\'');
-
+ESC: '\\' ('n'|'\"'|'t'|'\\'|'\'');
 protected
 CHARINTERNAL: (ESC|~('\''|'\\'|'\"'|'\n'|'\t'));
+protected
+LETTER: ('a'..'z')|('A'..'Z')|'_';
+protected
+DIGIT: '0'..'9';
+protected
+HEXDIGIT: DIGIT | ('a'..'f') | ('A'..'F');
+protected
+SKIPPABLE: WS_ | SL_COMMENT;
