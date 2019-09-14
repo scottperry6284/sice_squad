@@ -1,3 +1,63 @@
+/*package edu.mit.compilers;
+
+import java.io.*;
+import edu.mit.compilers.grammar.*;
+import edu.mit.compilers.tools.CLI;
+import edu.mit.compilers.tools.CLI.Action;
+
+class Main {
+  public static void main(String[] args) {
+    try {
+      CLI.parse(args, new String[0]);
+      InputStream inputStream = args.length == 0 ?
+          System.in : new java.io.FileInputStream(CLI.infile);
+      PrintStream outputStream = CLI.outfile == null ? System.out : new java.io.PrintStream(new java.io.FileOutputStream(CLI.outfile));
+      if (CLI.target == Action.SCAN) {
+    	DecafScannerCustom scanner = new DecafScannerCustom(inputStream);
+    	Token token;
+        boolean done = false;
+        while (!done) {
+          try
+          {
+            while(true)
+            {
+            	token = scanner.nextToken();
+            	if(token == null)
+            		break;
+				String type = token.type.getTypeString();
+				String text = token.text;
+				outputStream.print(token.line);
+				if(type != null)
+					outputStream.print(" " + type);
+				outputStream.println(" " + text);
+            }
+            done = true;
+          } 
+          catch(Exception e)
+          {
+            // print the error:
+            System.err.println(CLI.infile + " " + e);
+            e.printStackTrace();
+            scanner.consume();
+          }
+        }
+      } else if (CLI.target == Action.PARSE ||
+                 CLI.target == Action.DEFAULT) {
+        DecafScanner scanner =
+            new DecafScanner(new DataInputStream(inputStream));
+        DecafParser parser = new DecafParser(scanner);
+        parser.setTrace(CLI.debug);
+        parser.program();
+        if(parser.getError()) {
+          System.exit(1);
+        }
+      }
+    } catch(Exception e) {
+      // print the error:
+      System.err.println(CLI.infile+" "+e);
+    }
+  }
+}*/
 package edu.mit.compilers;
 
 import java.io.*;
@@ -19,6 +79,7 @@ class Main {
         scanner.setTrace(CLI.debug);
         Token token;
         boolean done = false;
+        boolean hasError = false;
         while (!done) {
           try {
             for (token = scanner.nextToken();
@@ -31,6 +92,9 @@ class Main {
                case DecafScannerTokenTypes.ID:
                 type = " IDENTIFIER";
                 break;
+               case DecafScannerTokenTypes.CHAR:
+            	type = " CHARLITERAL";
+            	break;
               }
               outputStream.println(token.getLine() + type + " " + text);
             }
@@ -39,7 +103,10 @@ class Main {
             // print the error:
             System.err.println(CLI.infile + " " + e);
             scanner.consume();
+            hasError = true;
           }
+          if(hasError)
+        	  System.exit(1);
         }
       } else if (CLI.target == Action.PARSE ||
                  CLI.target == Action.DEFAULT) {
