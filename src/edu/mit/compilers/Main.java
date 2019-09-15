@@ -99,7 +99,7 @@ class Main {
             	type = " INTLITERAL";
             	break;
                case DecafScannerTokenTypes.BOOLLITERAL:
-            	type = " BOOLLITERAL";
+            	type = " BOOLEANLITERAL";
             	break;
                case DecafScannerTokenTypes.STRINGLITERAL:
             	type = " STRINGLITERAL";
