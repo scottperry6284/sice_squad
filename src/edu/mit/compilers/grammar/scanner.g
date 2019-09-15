@@ -56,7 +56,7 @@ SL_COMMENT : "//" (~'\n')* '\n' {_ttype = Token.SKIP; newline (); };
 CHARLITERAL : '\'' CHARINTERNAL '\'';
 STRINGLITERAL: '"' (CHARINTERNAL)* '"';
 IDSTRING: (BOOLLITERAL NOTALETTERORDIGIT) => BOOLLITERAL {$setType(BOOLLITERAL);} |
-		  (RESERVED NONLETTER) => RESERVED {$setType(RESERVED);} |
+		  (RESERVED NOTALETTERORDIGIT) => RESERVED {$setType(RESERVED);} |
 		  ID {$setType(ID);};
 protected
 BOOLLITERAL: "true"|"false";
