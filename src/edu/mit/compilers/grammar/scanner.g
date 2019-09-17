@@ -55,6 +55,8 @@ SL_COMMENT : "//" (~'\n')* '\n' {_ttype = Token.SKIP; newline (); };
 
 CHARLITERAL : '\'' CHARINTERNAL '\'';
 STRINGLITERAL: '"' (CHARINTERNAL)* '"';
+DECIMALLITERAL: (DIGIT)+;
+HEXLITERAL: "0x" (HEXDIGIT)+;
 
 IDSTRING: (RESERVED_TRUE NOTALETTERORDIGIT) => RESERVED_TRUE {$setType(RESERVED_TRUE);} |
 		  (RESERVED_FALSE NOTALETTERORDIGIT) => RESERVED_FALSE {$setType(RESERVED_FALSE);} |
@@ -86,7 +88,6 @@ protected RESERVED_RETURN: "return";
 protected RESERVED_LEN: "len";
 protected RESERVED_VOID: "void";
 protected ID: LETTER (LETTER|DIGIT)*;
-INTLITERAL: (("0x" (HEXDIGIT)+) | ((DIGIT)+));
 
 DIV: "/";
 MULT: "*";

@@ -12,7 +12,7 @@ class DecafParser extends Parser;
 options
 {
   importVocab = DecafScanner;
-  k = 3;
+  k = 10;
   buildAST = true;
 }
 
@@ -60,10 +60,57 @@ options
   }
 }
 
-program: TK_class;
-//program: (field_decl)*;
+program: (import_decl)* (field_decl)* (method_decl)* EOF;
 
-//field_decl: type field_decl_inner (TK_COMMA field_decl_inner)+
-//protected
-//field_decl_inner: (id (TK_lbracket int_literal TK_rbracket)?)
-//type: TK_int | TK_bool
+import_decl: RESERVED_IMPORT ID SEMICOLON;
+field_decl: type field_decl_inner (COMMA field_decl_inner)* SEMICOLON;
+protected field_decl_inner: (ID (LBRACKET int_literal RBRACKET)?);
+method_decl: (RESERVED_VOID | type) ID LPAREN (method_param (COMMA method_param)*)? RPAREN block;
+protected method_param: type ID;
+block: LCURLY (field_decl)* (statement)* RCURLY;
+type: RESERVED_INT | RESERVED_BOOL;
+
+statement: (statement1 | statement2 | statement3 | statement4 | statement6);
+protected statement1: location assign_expr SEMICOLON;
+protected statement2: method_call SEMICOLON;
+protected statement3: RESERVED_IF LPAREN expr RPAREN block (RESERVED_ELSE block)*;
+protected statement4: RESERVED_FOR LPAREN ID ASSIGNMENT expr SEMICOLON
+					  expr SEMICOLON 
+					  location ((compound_assign_op expr) | (INCREMENT | DECREMENT)) RPAREN block;
+protected statement6: RESERVED_RETURN expr SEMICOLON;
+
+assign_expr: INCREMENT | DECREMENT | (assign_op expr);
+
+assign_op: ASSIGNMENT | compound_assign_op;
+
+compound_assign_op: RESERVED_PLUSEQUALS | RESERVED_MINUSEQUALS;
+
+method_call: ID method_params;
+
+method_params: (LPAREN RPAREN) => LPAREN RPAREN |
+			   (LPAREN expr (COMMA expr)* RPAREN) => (LPAREN expr (COMMA expr)* RPAREN) |
+			   LPAREN import_arg (COMMA import_arg)* RPAREN;
+
+expr: expr_t (bin_op expr)?;
+protected expr_t: (MINUS) => MINUS expr_t |
+				  (NOT) => NOT expr_t |
+				  (method_call) => method_call |
+				  location | literal | (RESERVED_LEN ID) | (LPAREN expr RPAREN);
+
+import_arg: expr | STRINGLITERAL; 
+bin_op: arith_op | rel_op | eq_op | cond_op;
+arith_op: PLUS | MINUS | MULT | DIV | PERCENT;
+rel_op: LESS | GREATER | LEQ | GEQ;
+eq_op: EQUALITY | NEQ;
+cond_op: ANDAND | OROR;
+
+location: (location_array) => location_array |
+		  location_noarray;
+protected location_noarray: ID;
+protected location_array: ID LBRACKET expr RBRACKET;
+
+literal: int_literal | CHARLITERAL | BOOLLITERAL;
+
+int_literal: DECIMALLITERAL | HEXLITERAL;
+
+

@@ -95,7 +95,8 @@ class Main {
                case DecafScannerTokenTypes.CHARLITERAL:
             	type = " CHARLITERAL";
             	break;
-               case DecafScannerTokenTypes.INTLITERAL:
+               case DecafScannerTokenTypes.DECIMALLITERAL:
+               case DecafScannerTokenTypes.HEXLITERAL:
             	type = " INTLITERAL";
             	break;
                case DecafScannerTokenTypes.RESERVED_TRUE:
@@ -127,6 +128,7 @@ class Main {
         DecafParser parser = new DecafParser(scanner);
         parser.setTrace(CLI.debug);
         parser.program();
+        System.out.println(parser.getError()? "Error": "No error");
         if(parser.getError()) {
           System.exit(1);
         }
