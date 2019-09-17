@@ -60,4 +60,10 @@ options
   }
 }
 
-program: TK_class ID LCURLY RCURLY EOF;
+program: TK_class;
+//program: (field_decl)*;
+
+//field_decl: type field_decl_inner (TK_COMMA field_decl_inner)+
+//protected
+//field_decl_inner: (id (TK_lbracket int_literal TK_rbracket)?)
+//type: TK_int | TK_bool

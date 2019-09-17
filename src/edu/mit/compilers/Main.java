@@ -98,7 +98,8 @@ class Main {
                case DecafScannerTokenTypes.INTLITERAL:
             	type = " INTLITERAL";
             	break;
-               case DecafScannerTokenTypes.BOOLLITERAL:
+               case DecafScannerTokenTypes.RESERVED_TRUE:
+               case DecafScannerTokenTypes.RESERVED_FALSE:
             	type = " BOOLEANLITERAL";
             	break;
                case DecafScannerTokenTypes.STRINGLITERAL:
@@ -121,6 +122,8 @@ class Main {
                  CLI.target == Action.DEFAULT) {
         DecafScanner scanner =
             new DecafScanner(new DataInputStream(inputStream));
+        //DecafParserCustom parser = new DecafParserCustom(scanner);
+        //parser.run();
         DecafParser parser = new DecafParser(scanner);
         parser.setTrace(CLI.debug);
         parser.program();
