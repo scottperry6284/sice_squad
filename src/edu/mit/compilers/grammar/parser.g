@@ -70,20 +70,23 @@ protected method_param: type ID;
 block: LCURLY (field_decl)* (statement)* RCURLY;
 type: RESERVED_INT | RESERVED_BOOL;
 
-statement: (statement1 | statement2 | statement3 | statement4 | statement6);
+statement: (statement1 | statement2 | statement3 | statement4 | statement5 | statement6 | statement7 | statement8);
 protected statement1: location assign_expr SEMICOLON;
 protected statement2: method_call SEMICOLON;
 protected statement3: RESERVED_IF LPAREN expr RPAREN block (RESERVED_ELSE block)*;
 protected statement4: RESERVED_FOR LPAREN ID ASSIGNMENT expr SEMICOLON
 					  expr SEMICOLON 
-					  location ((compound_assign_op expr) | (INCREMENT | DECREMENT)) RPAREN block;
+					  location ((compound_assign_op expr) | INCREMENT | DECREMENT) RPAREN block;
+protected statement5: RESERVED_WHILE LPAREN expr RPAREN block;		 
 protected statement6: RESERVED_RETURN expr SEMICOLON;
+protected statement7: RESERVED_BREAK SEMICOLON;
+protected statement8: RESERVED_CONTINUE SEMICOLON;
 
 assign_expr: INCREMENT | DECREMENT | (assign_op expr);
 
 assign_op: ASSIGNMENT | compound_assign_op;
 
-compound_assign_op: RESERVED_PLUSEQUALS | RESERVED_MINUSEQUALS;
+compound_assign_op: PLUSEQUALS | MINUSEQUALS;
 
 method_call: ID method_params;
 
@@ -109,7 +112,9 @@ location: (location_array) => location_array |
 protected location_noarray: ID;
 protected location_array: ID LBRACKET expr RBRACKET;
 
-literal: int_literal | CHARLITERAL | BOOLLITERAL;
+literal: int_literal | CHARLITERAL | bool_literal;
+
+bool_literal: RESERVED_TRUE | RESERVED_FALSE;
 
 int_literal: DECIMALLITERAL | HEXLITERAL;
 
