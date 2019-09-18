@@ -20,5 +20,5 @@ declare -r ROOT=$(git rev-parse --show-toplevel)
 declare -r BUILDER="$ROOT/build.sh"
 declare -r RUNNER="$ROOT/run.sh"
 
+export -f green red build remove-ext
 export ROOT BUILDER RUNNER
-export SCALA_HOME='/usr/share/scala-2.11'
