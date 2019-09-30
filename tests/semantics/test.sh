@@ -17,7 +17,7 @@ for INPUT_FILE in $(dirname $0)/illegal/*; do
   if run-semantics "$INPUT_FILE" &> /dev/null; then
     red "ILLEGAL FILE '$INPUT_FILE' PASSED"
   else
-    green "PASSED '$INPUT_FILE'"
+    green "SUCCESSFULLY FAILED '$INPUT_FILE'"
     count_pass=$(( count_pass + 1 ))
   fi
   count_all=$(( count_all + 1 ))
@@ -25,7 +25,7 @@ done
 
 for INPUT_FILE in $(dirname $0)/legal/*; do
   if run-semantics "$INPUT_FILE" &> /dev/null; then
-    green "SUCCESSFULLY FAILED '$INPUT_FILE'"
+    green "PASSED '$INPUT_FILE'"
     count_pass=$(( count_pass + 1 ))
   else
     red "LEGAL FILE '$INPUT_FILE' FAILED"
