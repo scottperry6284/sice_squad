@@ -3,6 +3,7 @@ package edu.mit.compilers;
 import java.io.*;
 import antlr.Token;
 import edu.mit.compilers.grammar.*;
+import edu.mit.compilers.semantics.IRBuilder;
 import edu.mit.compilers.tools.CLI;
 import edu.mit.compilers.tools.CLI.Action;
 
@@ -70,22 +71,20 @@ token.getType() != DecafParserTokenTypes.EOF;
           System.exit(1);
         }
       }
+	  else if(CLI.target == Action.INTER) {
+	      DecafScanner scanner = new DecafScanner(new DataInputStream(inputStream));
+	      DecafParser parser = new DecafParser(scanner);
+	      parser.setTrace(CLI.debug);
+	      parser.program();
+	      System.out.println(parser.getError()? "Error": "No error");
+	      if(parser.getError()) {
+	        System.exit(1);
+	      }
+	      IRBuilder irbuilder = new IRBuilder();
+	  	}
     }
 	catch(Exception e) {
       System.err.println(CLI.infile + " " + e);
     }
-    else if(CLI.target == Action.INTER) {
-        DecafScanner scanner = new DecafScanner(new DataInputStream(inputStream));
-        DecafParser parser = new DecafParser(scanner);
-        parser.setTrace(CLI.debug);
-        parser.program();
-        System.out.println(parser.getError()? "Error": "No error");
-        if(parser.getError()) {
-          System.exit(1);
-        }
-		IRBuilder irbuilder = new IRBuilder(parser);
-	}
-	catch(Exception e) {
-      System.err.println(CLI.infile + " " + e);
   }
 }

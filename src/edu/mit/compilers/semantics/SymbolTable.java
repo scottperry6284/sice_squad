@@ -12,11 +12,13 @@ public class SymbolElement {
         node.put(var, true); 
     }
 
-    public boolean find (String var){
-        if (node.get(var)) return true; 
+    public int find (String var){
+        if (node.get(var)) return 0; 
         if (parent == null){
-            return false; 
+            return -1; 
         }
-        return parent.find(var); 
+        int lev = parent.find(var); 
+        if (lev == -1) return -1; 
+        return 1 + lev; 
     } 
 }
