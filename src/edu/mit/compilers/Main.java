@@ -63,8 +63,6 @@ class Main {
                  CLI.target == Action.DEFAULT) {
         DecafScanner scanner =
             new DecafScanner(new DataInputStream(inputStream));
-        //DecafParserCustom parser = new DecafParserCustom(scanner);
-        //parser.run();
         DecafParser parser = new DecafParser(scanner);
         parser.setTrace(CLI.debug);
         parser.program();
@@ -74,8 +72,8 @@ class Main {
         }
       }
     } catch(Exception e) {
-      // print the error:
       System.err.println(CLI.infile+" "+e);
     }
+    
   }
 }
