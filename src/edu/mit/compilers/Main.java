@@ -3,7 +3,7 @@ package edu.mit.compilers;
 import java.io.*;
 import antlr.Token;
 import edu.mit.compilers.grammar.*;
-import edu.mit.compilers.semantics.IRBuilder;
+import edu.mit.compilers.semantics.IR;
 import edu.mit.compilers.tools.CLI;
 import edu.mit.compilers.tools.CLI.Action;
 
@@ -80,7 +80,8 @@ token.getType() != DecafParserTokenTypes.EOF;
 	      if(parser.getError()) {
 	        System.exit(1);
 	      }
-	      IRBuilder irbuilder = new IRBuilder();
+	      IR irbuilder = new IR(parser);
+	      irbuilder.build();
 	  	}
     }
 	catch(Exception e) {
