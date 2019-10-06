@@ -23,7 +23,7 @@ class Main {
         while (!done) {
           try {
             for (token = scanner.nextToken();
-                 token.getType() != DecafParserTokenTypes.EOF;
+token.getType() != DecafParserTokenTypes.EOF;
                  token = scanner.nextToken()) {
               String type = "";
               String text = token.getText();
@@ -59,10 +59,9 @@ class Main {
           if(hasError)
         	  System.exit(1);
         }
-      } else if (CLI.target == Action.PARSE ||
-                 CLI.target == Action.DEFAULT) {
-        DecafScanner scanner =
-            new DecafScanner(new DataInputStream(inputStream));
+      }
+	  else if (CLI.target == Action.PARSE || CLI.target == Action.DEFAULT) {
+        DecafScanner scanner = new DecafScanner(new DataInputStream(inputStream));
         DecafParser parser = new DecafParser(scanner);
         parser.setTrace(CLI.debug);
         parser.program();
@@ -71,9 +70,22 @@ class Main {
           System.exit(1);
         }
       }
-    } catch(Exception e) {
-      System.err.println(CLI.infile+" "+e);
     }
-    
+	catch(Exception e) {
+      System.err.println(CLI.infile + " " + e);
+    }
+    else if(CLI.target == Action.INTER) {
+        DecafScanner scanner = new DecafScanner(new DataInputStream(inputStream));
+        DecafParser parser = new DecafParser(scanner);
+        parser.setTrace(CLI.debug);
+        parser.program();
+        System.out.println(parser.getError()? "Error": "No error");
+        if(parser.getError()) {
+          System.exit(1);
+        }
+		IRBuilder irbuilder = new IRBuilder(parser);
+	}
+	catch(Exception e) {
+      System.err.println(CLI.infile + " " + e);
   }
 }
