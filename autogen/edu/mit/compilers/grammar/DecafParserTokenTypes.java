@@ -66,5 +66,4 @@ public interface DecafParserTokenTypes {
 	int SKIPPABLE = 62;
 	int BADTOKEN = 63;
 	int AST_program = 64;
-	int PROGRAM = 65;
 }

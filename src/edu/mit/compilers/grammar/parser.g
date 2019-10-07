@@ -18,7 +18,7 @@ options
 tokens
 {
   AST_program;
-  PROGRAM; 
+  
 }
 
 // Java glue code that makes error reporting easier.
@@ -65,10 +65,7 @@ tokens
   }
 }
 
-program: (
-  (import_decl)* (field_decl)* (method_decl)* EOF
-  { #program = #(#[PROGRAM, "PROGRAM"], #program); }
-);
+program: (import_decl)* (field_decl)* (method_decl)* EOF;
 
 import_decl: RESERVED_IMPORT ID SEMICOLON;
 field_decl: type field_decl_inner (COMMA field_decl_inner)* SEMICOLON;
