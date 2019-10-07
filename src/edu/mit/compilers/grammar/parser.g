@@ -12,8 +12,13 @@ class DecafParser extends Parser;
 options
 {
   importVocab = DecafScanner;
-  k = 10;
+  k = 3;
   buildAST = true;
+}
+tokens
+{
+  AST_program;
+  
 }
 
 // Java glue code that makes error reporting easier.

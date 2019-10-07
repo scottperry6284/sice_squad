@@ -1,5 +1,7 @@
-public class SymbolElement {
-    HashMap<String, Boolean> node;
+package edu.mit.compilers.semantics;
+
+public class SymbolTable {
+    /*HashMap<String, Boolean> node;
     SymbolElement parent; 
 
 	public SymbolElement(SymbolElement par) {
@@ -20,5 +22,5 @@ public class SymbolElement {
         int lev = parent.find(var); 
         if (lev == -1) return -1; 
         return 1 + lev; 
-    } 
+    } */
 }

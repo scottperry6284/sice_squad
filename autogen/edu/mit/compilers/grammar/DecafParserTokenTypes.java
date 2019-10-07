@@ -65,4 +65,5 @@ public interface DecafParserTokenTypes {
 	int HEXDIGIT = 61;
 	int SKIPPABLE = 62;
 	int BADTOKEN = 63;
+	int AST_program = 64;
 }
