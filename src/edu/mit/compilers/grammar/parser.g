@@ -20,8 +20,9 @@ tokens
   AST_program;
   AST_import_decl;
   AST_field_decl;
+  AST_field_decl_inner;
   AST_method_decl;
-  AST_method_param;
+  AST_method_decl_param;
   AST_block;
   AST_type;
   AST_statement_assignment;
@@ -105,13 +106,14 @@ import_decl: RESERVED_IMPORT ID SEMICOLON
 field_decl: type field_decl_inner (COMMA field_decl_inner)* SEMICOLON
 			{## = #(#[AST_field_decl, "field_decl"], ##);};
 			
-protected field_decl_inner: (ID (LBRACKET int_literal RBRACKET)?);
+protected field_decl_inner: (ID (LBRACKET int_literal RBRACKET)?)
+							{## = #(#[AST_field_decl_inner, "field_decl_inner"], ##);};
 
-method_decl: (RESERVED_VOID | type) ID LPAREN (method_param (COMMA method_param)*)? RPAREN block
+method_decl: (RESERVED_VOID | type) ID LPAREN (method_decl_param (COMMA method_decl_param)*)? RPAREN block
 			 {## = #(#[AST_method_decl, "method_decl"], ##);};
 			 
-protected method_param: type ID
-						{## = #(#[AST_method_param, "method_param"], ##);};
+protected method_decl_param: type ID
+						{## = #(#[AST_method_decl_param, "method_decl_param"], ##);};
 
 block: LCURLY (field_decl)* (statement)* RCURLY
 	   {## = #(#[AST_block, "block"], ##);};

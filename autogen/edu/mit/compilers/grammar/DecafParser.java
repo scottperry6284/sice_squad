@@ -317,7 +317,7 @@ public DecafParser(ParserSharedInputState state) {
 				case RESERVED_BOOL:
 				case RESERVED_INT:
 				{
-					method_param();
+					method_decl_param();
 					astFactory.addASTChild(currentAST, returnAST);
 					{
 					_loop19:
@@ -327,7 +327,7 @@ public DecafParser(ParserSharedInputState state) {
 							tmp10_AST = astFactory.create(LT(1));
 							astFactory.addASTChild(currentAST, tmp10_AST);
 							match(COMMA);
-							method_param();
+							method_decl_param();
 							astFactory.addASTChild(currentAST, returnAST);
 						}
 						else {
@@ -476,6 +476,14 @@ public DecafParser(ParserSharedInputState state) {
 				}
 				}
 				}
+				if ( inputState.guessing==0 ) {
+					field_decl_inner_AST = (AST)currentAST.root;
+					field_decl_inner_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_field_decl_inner,"field_decl_inner")).add(field_decl_inner_AST));
+					currentAST.root = field_decl_inner_AST;
+					currentAST.child = field_decl_inner_AST!=null &&field_decl_inner_AST.getFirstChild()!=null ?
+						field_decl_inner_AST.getFirstChild() : field_decl_inner_AST;
+					currentAST.advanceChildToEnd();
+				}
 				field_decl_inner_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
@@ -548,13 +556,13 @@ public DecafParser(ParserSharedInputState state) {
 		}
 	}
 	
-	protected final void method_param() throws RecognitionException, TokenStreamException {
+	protected final void method_decl_param() throws RecognitionException, TokenStreamException {
 		
-		traceIn("method_param");
+		traceIn("method_decl_param");
 		try { // debugging
 			returnAST = null;
 			ASTPair currentAST = new ASTPair();
-			AST method_param_AST = null;
+			AST method_decl_param_AST = null;
 			
 			try {      // for error handling
 				type();
@@ -564,14 +572,14 @@ public DecafParser(ParserSharedInputState state) {
 				astFactory.addASTChild(currentAST, tmp19_AST);
 				match(ID);
 				if ( inputState.guessing==0 ) {
-					method_param_AST = (AST)currentAST.root;
-					method_param_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_method_param,"method_param")).add(method_param_AST));
-					currentAST.root = method_param_AST;
-					currentAST.child = method_param_AST!=null &&method_param_AST.getFirstChild()!=null ?
-						method_param_AST.getFirstChild() : method_param_AST;
+					method_decl_param_AST = (AST)currentAST.root;
+					method_decl_param_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_method_decl_param,"method_decl_param")).add(method_decl_param_AST));
+					currentAST.root = method_decl_param_AST;
+					currentAST.child = method_decl_param_AST!=null &&method_decl_param_AST.getFirstChild()!=null ?
+						method_decl_param_AST.getFirstChild() : method_decl_param_AST;
 					currentAST.advanceChildToEnd();
 				}
-				method_param_AST = (AST)currentAST.root;
+				method_decl_param_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -581,9 +589,9 @@ public DecafParser(ParserSharedInputState state) {
 				  throw ex;
 				}
 			}
-			returnAST = method_param_AST;
+			returnAST = method_decl_param_AST;
 		} finally { // debugging
-			traceOut("method_param");
+			traceOut("method_decl_param");
 		}
 	}
 	
@@ -2491,8 +2499,9 @@ inputState.guessing--;
 		"AST_program",
 		"AST_import_decl",
 		"AST_field_decl",
+		"AST_field_decl_inner",
 		"AST_method_decl",
-		"AST_method_param",
+		"AST_method_decl_param",
 		"AST_block",
 		"AST_type",
 		"AST_statement_assignment",
@@ -2506,7 +2515,6 @@ inputState.guessing--;
 		"AST_assign_expr",
 		"AST_assign_op",
 		"AST_compound_assign_op",
-		"AST_method_call",
 		"AST_method_params_none",
 		"AST_method_params_local",
 		"AST_method_params_import",

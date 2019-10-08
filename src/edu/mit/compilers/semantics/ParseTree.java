@@ -46,20 +46,22 @@ public class ParseTree {
 				ast = ast.getNextSibling();
 			}
 		}
-		private void print(int d)
-		{
+		private void print(int d) {
 			for(int i=0; i<d; i++)
 				System.out.print("  ");
 			System.out.println(text);
 			for(Node child: children)
 				child.print(d+1);
 		}
-		public void print()
-		{
+		public void print() {
 			print(0);
+		}
+		public Node child(int idx) {
+			return children.get(idx);
 		}
 	}
 	public void build() {
 		root = new Node(parser.getAST());
+		root.print();
 	}
 }
