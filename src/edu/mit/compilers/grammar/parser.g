@@ -18,7 +18,39 @@ options
 tokens
 {
   AST_program;
-  PROGRAM; 
+  AST_import_decl;
+  AST_field_decl;
+  AST_method_decl;
+  AST_method_param;
+  AST_block;
+  AST_type;
+  AST_statement_assignment;
+  AST_statement_method_call;
+  AST_statement_if;
+  AST_statement_for;
+  AST_statement_while;
+  AST_statement_return;
+  AST_statement_break;
+  AST_statement_continue;
+  AST_assign_expr;
+  AST_assign_op;
+  AST_compound_assign_op;
+  AST_method_call;
+  AST_method_params_none;
+  AST_method_params_local;
+  AST_method_params_import;
+  AST_expr;
+  AST_import_arg;
+  AST_bin_op;
+  AST_arith_op;
+  AST_rel_op;
+  AST_eq_op;
+  AST_cond_op;
+  AST_location_array;
+  AST_location_noarray;
+  AST_char_literal;
+  AST_bool_literal;
+  AST_int_literal;
 }
 
 // Java glue code that makes error reporting easier.
@@ -65,65 +97,115 @@ tokens
   }
 }
 
-program: (
-  (import_decl)* (field_decl)* (method_decl)* EOF
-  { #program = #(#[PROGRAM, "PROGRAM"], #program); }
-);
+program: (import_decl)* (field_decl)* (method_decl)* EOF
+		 {## = #(#[AST_program, "program"], ##);};
 
-import_decl: RESERVED_IMPORT ID SEMICOLON;
-field_decl: type field_decl_inner (COMMA field_decl_inner)* SEMICOLON;
+import_decl: RESERVED_IMPORT ID SEMICOLON
+			 {## = #(#[AST_import_decl, "import_decl"], ##);};
+			 
+field_decl: type field_decl_inner (COMMA field_decl_inner)* SEMICOLON
+			{## = #(#[AST_field_decl, "field_decl"], ##);};
+			
 protected field_decl_inner: (ID (LBRACKET int_literal RBRACKET)?);
-method_decl: (RESERVED_VOID | type) ID LPAREN (method_param (COMMA method_param)*)? RPAREN block;
-protected method_param: type ID;
-block: LCURLY (field_decl)* (statement)* RCURLY;
-type: RESERVED_INT | RESERVED_BOOL;
+
+method_decl: (RESERVED_VOID | type) ID LPAREN (method_param (COMMA method_param)*)? RPAREN block
+			 {## = #(#[AST_method_decl, "method_decl"], ##);};
+			 
+protected method_param: type ID
+						{## = #(#[AST_method_param, "method_param"], ##);};
+
+block: LCURLY (field_decl)* (statement)* RCURLY
+	   {## = #(#[AST_block, "block"], ##);};
+
+type: RESERVED_INT | RESERVED_BOOL
+	  {## = #(#[AST_type, "type"], ##);};
 
 statement: (statement1 | statement2 | statement3 | statement4 | statement5 | statement6 | statement7 | statement8);
-protected statement1: location assign_expr SEMICOLON;
-protected statement2: method_call SEMICOLON;
-protected statement3: RESERVED_IF LPAREN expr RPAREN block (RESERVED_ELSE block)*;
+  
+protected statement1: location assign_expr SEMICOLON
+					  {## = #(#[AST_statement_assignment, "AST_statement_assignment"], ##);};
+protected statement2: method_call SEMICOLON
+					  {## = #(#[AST_statement_method_call, "AST_statement_method_call"], ##);};
+protected statement3: RESERVED_IF LPAREN expr RPAREN block (RESERVED_ELSE block)*
+					  {## = #(#[AST_statement_if, "AST_statement_if"], ##);};
 protected statement4: RESERVED_FOR LPAREN ID ASSIGNMENT expr SEMICOLON
 					  expr SEMICOLON 
-					  location ((compound_assign_op expr) | INCREMENT | DECREMENT) RPAREN block;
-protected statement5: RESERVED_WHILE LPAREN expr RPAREN block;		 
-protected statement6: RESERVED_RETURN expr SEMICOLON;
-protected statement7: RESERVED_BREAK SEMICOLON;
-protected statement8: RESERVED_CONTINUE SEMICOLON;
+					  location ((compound_assign_op expr) | INCREMENT | DECREMENT) RPAREN block
+					  {## = #(#[AST_statement_for, "AST_statement_for"], ##);};
+protected statement5: RESERVED_WHILE LPAREN expr RPAREN block
+	 				  {## = #(#[AST_statement_while, "AST_statement_while"], ##);};
+protected statement6: RESERVED_RETURN expr SEMICOLON
+					  {## = #(#[AST_statement_return, "AST_statement_return"], ##);};
+protected statement7: RESERVED_BREAK SEMICOLON
+					  {## = #(#[AST_statement_break, "AST_statement_break"], ##);};
+protected statement8: RESERVED_CONTINUE SEMICOLON
+					  {## = #(#[AST_statement_continue, "AST_statement_continue"], ##);};
 
-assign_expr: INCREMENT | DECREMENT | (assign_op expr);
+assign_expr: INCREMENT | DECREMENT | (assign_op expr)
+			 {## = #(#[AST_assign_expr, "AST_assign_expr"], ##);};
 
-assign_op: ASSIGNMENT | compound_assign_op;
+assign_op: ASSIGNMENT | compound_assign_op
+		   {## = #(#[AST_assign_op, "AST_assign_op"], ##);};
 
-compound_assign_op: PLUSEQUALS | MINUSEQUALS;
+compound_assign_op: PLUSEQUALS | MINUSEQUALS
+		  		    {## = #(#[AST_compound_assign_op, "AST_compound_assign_op"], ##);};
 
-method_call: ID method_params;
+method_call: ID method_params
+			 {## = #(#[AST_method_call, "AST_method_call"], ##);};
 
-method_params: (LPAREN RPAREN) => LPAREN RPAREN |
-			   (LPAREN expr (COMMA expr)* RPAREN) => (LPAREN expr (COMMA expr)* RPAREN) |
-			   LPAREN import_arg (COMMA import_arg)* RPAREN;
+method_params: (LPAREN RPAREN) => LPAREN RPAREN 
+			   {## = #(#[AST_method_params_none, "AST_method_params_none"], ##);}
+			   |
+			   (LPAREN expr (COMMA expr)* RPAREN) => (LPAREN expr (COMMA expr)* RPAREN)
+			   {## = #(#[AST_method_params_local, "AST_method_params_local"], ##);}
+			   |
+			   LPAREN import_arg (COMMA import_arg)* RPAREN
+			   {## = #(#[AST_method_params_import, "AST_method_params_import"], ##);};
 
-expr: expr_t (bin_op expr)?;
+expr: expr_t (bin_op expr)?
+	  {## = #(#[AST_expr, "AST_expr"], ##);};
+
 protected expr_t: (MINUS) => MINUS expr_t |
 				  (NOT) => NOT expr_t |
 				  (method_call) => method_call |
 				  location | literal | (RESERVED_LEN ID) | (LPAREN expr RPAREN);
 
-import_arg: expr | STRINGLITERAL; 
-bin_op: arith_op | rel_op | eq_op | cond_op;
-arith_op: PLUS | MINUS | MULT | DIV | PERCENT;
-rel_op: LESS | GREATER | LEQ | GEQ;
-eq_op: EQUALITY | NEQ;
-cond_op: ANDAND | OROR;
+import_arg: expr | STRINGLITERAL
+			{## = #(#[AST_import_arg, "AST_import_arg"], ##);};
+			
+bin_op: arith_op | rel_op | eq_op | cond_op
+		{## = #(#[AST_bin_op, "AST_bin_op"], ##);};
+
+arith_op: PLUS | MINUS | MULT | DIV | PERCENT
+		  {## = #(#[AST_arith_op, "AST_arith_op"], ##);};
+
+rel_op: LESS | GREATER | LEQ | GEQ
+		{## = #(#[AST_rel_op, "AST_rel_op"], ##);};
+
+eq_op: EQUALITY | NEQ
+	   {## = #(#[AST_eq_op, "AST_eq_op"], ##);};
+	   
+cond_op: ANDAND | OROR
+		 {## = #(#[AST_cond_op, "AST_cond_op"], ##);};
 
 location: (location_array) => location_array |
 		  location_noarray;
-protected location_noarray: ID;
-protected location_array: ID LBRACKET expr RBRACKET;
+		  
+location_noarray: ID
+							{## = #(#[AST_location_noarray, "AST_location_noarray"], ##);};
 
-literal: int_literal | CHARLITERAL | bool_literal;
+location_array: ID LBRACKET expr RBRACKET
+						  {## = #(#[AST_location_array, "AST_location_array"], ##);};
 
-bool_literal: RESERVED_TRUE | RESERVED_FALSE;
+literal: int_literal | char_literal | bool_literal;
 
-int_literal: DECIMALLITERAL | HEXLITERAL;
+protected char_literal: CHARLITERAL
+			  {## = #(#[AST_char_literal, "AST_char_literal"], ##);};
+
+protected bool_literal: RESERVED_TRUE | RESERVED_FALSE
+			  {## = #(#[AST_bool_literal, "AST_bool_literal"], ##);};
+
+protected int_literal: DECIMALLITERAL | HEXLITERAL
+			 {## = #(#[AST_int_literal, "AST_int_literal"], ##);};
 
 

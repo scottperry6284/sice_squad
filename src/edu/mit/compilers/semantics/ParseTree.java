@@ -12,6 +12,20 @@ public class ParseTree {
 	public ParseTree(DecafParser parser) {
 		this.parser = parser;
 	}
+	private void printASTInner(AST ast, int d) {
+		while(ast != null) {
+			for(int i=0; i<d; i++)
+				System.out.print("  ");
+			System.out.println(ast.getText());
+			printASTInner(ast.getFirstChild(), d+1);
+			ast = ast.getNextSibling();
+		}
+	}
+	public void printAST()
+	{
+		AST ast = parser.getAST();
+		printASTInner(ast, 0);
+	}
 	private class Node {
 		public final List<Node> children;
 		public final int line, col;
@@ -32,11 +46,10 @@ public class ParseTree {
 	public void build() {
 		//root = new Node(parser.getAST());
 		AST ast = parser.getAST();
-		
-		while(ast != null)
+		/*while(ast != null)
 		{
 			System.out.println(ast.getText() + " " + ast.getNumberOfChildren());
 			ast = ast.getNextSibling();
-		}
+		}*/
 	}
 }

@@ -3,14 +3,14 @@ import edu.mit.compilers.grammar.*;
 
 public class IR {
 	private ParseTree parseTree;
-	public IR(DecafParser parser) {
-		this.parseTree = new ParseTree(parser);
+	public IR(ParseTree parseTree) {
+		this.parseTree = parseTree;
 	}
 	
 	
 	public void build()
 	{
-		parseTree.build();
+		
 	}
 	
 	public interface Node

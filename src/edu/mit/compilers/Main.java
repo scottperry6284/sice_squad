@@ -4,6 +4,7 @@ import java.io.*;
 import antlr.Token;
 import edu.mit.compilers.grammar.*;
 import edu.mit.compilers.semantics.IR;
+import edu.mit.compilers.semantics.ParseTree;
 import edu.mit.compilers.tools.CLI;
 import edu.mit.compilers.tools.CLI.Action;
 
@@ -80,7 +81,10 @@ token.getType() != DecafParserTokenTypes.EOF;
 	      if(parser.getError()) {
 	        System.exit(1);
 	      }
-	      IR irbuilder = new IR(parser);
+	      ParseTree parseTree = new ParseTree(parser);
+	      parseTree.printAST();
+	      parseTree.build();
+	      IR irbuilder = new IR(parseTree);
 	      irbuilder.build();
 	  	}
     }
