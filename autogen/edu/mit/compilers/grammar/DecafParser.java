@@ -1278,7 +1278,7 @@ inputState.guessing--;
 		}
 	}
 	
-	public final void method_call() throws RecognitionException, TokenStreamException {
+	protected final void method_call() throws RecognitionException, TokenStreamException {
 		
 		traceIn("method_call");
 		try { // debugging
@@ -1293,14 +1293,6 @@ inputState.guessing--;
 				match(ID);
 				method_params();
 				astFactory.addASTChild(currentAST, returnAST);
-				if ( inputState.guessing==0 ) {
-					method_call_AST = (AST)currentAST.root;
-					method_call_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_method_call,"AST_method_call")).add(method_call_AST));
-					currentAST.root = method_call_AST;
-					currentAST.child = method_call_AST!=null &&method_call_AST.getFirstChild()!=null ?
-						method_call_AST.getFirstChild() : method_call_AST;
-					currentAST.advanceChildToEnd();
-				}
 				method_call_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {

@@ -35,7 +35,6 @@ tokens
   AST_assign_expr;
   AST_assign_op;
   AST_compound_assign_op;
-  AST_method_call;
   AST_method_params_none;
   AST_method_params_local;
   AST_method_params_import;
@@ -150,8 +149,7 @@ assign_op: ASSIGNMENT | compound_assign_op
 compound_assign_op: PLUSEQUALS | MINUSEQUALS
 		  		    {## = #(#[AST_compound_assign_op, "AST_compound_assign_op"], ##);};
 
-method_call: ID method_params
-			 {## = #(#[AST_method_call, "AST_method_call"], ##);};
+protected method_call: ID method_params; //statement_method_call is set previously
 
 method_params: (LPAREN RPAREN) => LPAREN RPAREN 
 			   {## = #(#[AST_method_params_none, "AST_method_params_none"], ##);}
