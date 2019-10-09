@@ -387,6 +387,7 @@ public DecafParser(ParserSharedInputState state) {
 			AST type_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case RESERVED_INT:
 				{
@@ -394,7 +395,6 @@ public DecafParser(ParserSharedInputState state) {
 					tmp12_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp12_AST);
 					match(RESERVED_INT);
-					type_AST = (AST)currentAST.root;
 					break;
 				}
 				case RESERVED_BOOL:
@@ -403,15 +403,6 @@ public DecafParser(ParserSharedInputState state) {
 					tmp13_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp13_AST);
 					match(RESERVED_BOOL);
-					if ( inputState.guessing==0 ) {
-						type_AST = (AST)currentAST.root;
-						type_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_type,"type")).add(type_AST));
-						currentAST.root = type_AST;
-						currentAST.child = type_AST!=null &&type_AST.getFirstChild()!=null ?
-							type_AST.getFirstChild() : type_AST;
-						currentAST.advanceChildToEnd();
-					}
-					type_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -419,6 +410,16 @@ public DecafParser(ParserSharedInputState state) {
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					type_AST = (AST)currentAST.root;
+					type_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_type,"type")).add(type_AST));
+					currentAST.root = type_AST;
+					currentAST.child = type_AST!=null &&type_AST.getFirstChild()!=null ?
+						type_AST.getFirstChild() : type_AST;
+					currentAST.advanceChildToEnd();
+				}
+				type_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -509,6 +510,7 @@ public DecafParser(ParserSharedInputState state) {
 			AST int_literal_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case DECIMALLITERAL:
 				{
@@ -516,7 +518,6 @@ public DecafParser(ParserSharedInputState state) {
 					tmp17_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp17_AST);
 					match(DECIMALLITERAL);
-					int_literal_AST = (AST)currentAST.root;
 					break;
 				}
 				case HEXLITERAL:
@@ -525,15 +526,6 @@ public DecafParser(ParserSharedInputState state) {
 					tmp18_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp18_AST);
 					match(HEXLITERAL);
-					if ( inputState.guessing==0 ) {
-						int_literal_AST = (AST)currentAST.root;
-						int_literal_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_int_literal,"AST_int_literal")).add(int_literal_AST));
-						currentAST.root = int_literal_AST;
-						currentAST.child = int_literal_AST!=null &&int_literal_AST.getFirstChild()!=null ?
-							int_literal_AST.getFirstChild() : int_literal_AST;
-						currentAST.advanceChildToEnd();
-					}
-					int_literal_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -541,6 +533,16 @@ public DecafParser(ParserSharedInputState state) {
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					int_literal_AST = (AST)currentAST.root;
+					int_literal_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_int_literal,"AST_int_literal")).add(int_literal_AST));
+					currentAST.root = int_literal_AST;
+					currentAST.child = int_literal_AST!=null &&int_literal_AST.getFirstChild()!=null ?
+						int_literal_AST.getFirstChild() : int_literal_AST;
+					currentAST.advanceChildToEnd();
+				}
+				int_literal_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -845,7 +847,7 @@ public DecafParser(ParserSharedInputState state) {
 				block();
 				astFactory.addASTChild(currentAST, returnAST);
 				{
-				_loop33:
+				_loop34:
 				do {
 					if ((LA(1)==RESERVED_ELSE)) {
 						AST tmp27_AST = null;
@@ -856,7 +858,7 @@ public DecafParser(ParserSharedInputState state) {
 						astFactory.addASTChild(currentAST, returnAST);
 					}
 					else {
-						break _loop33;
+						break _loop34;
 					}
 					
 				} while (true);
@@ -1172,10 +1174,10 @@ public DecafParser(ParserSharedInputState state) {
 			AST location_AST = null;
 			
 			try {      // for error handling
-				boolean synPredMatched77 = false;
+				boolean synPredMatched88 = false;
 				if (((LA(1)==ID) && (LA(2)==LBRACKET))) {
-					int _m77 = mark();
-					synPredMatched77 = true;
+					int _m88 = mark();
+					synPredMatched88 = true;
 					inputState.guessing++;
 					try {
 						{
@@ -1183,12 +1185,12 @@ public DecafParser(ParserSharedInputState state) {
 						}
 					}
 					catch (RecognitionException pe) {
-						synPredMatched77 = false;
+						synPredMatched88 = false;
 					}
-					rewind(_m77);
+					rewind(_m88);
 inputState.guessing--;
 				}
-				if ( synPredMatched77 ) {
+				if ( synPredMatched88 ) {
 					location_array();
 					astFactory.addASTChild(currentAST, returnAST);
 					location_AST = (AST)currentAST.root;
@@ -1226,6 +1228,7 @@ inputState.guessing--;
 			AST assign_expr_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case INCREMENT:
 				{
@@ -1233,7 +1236,6 @@ inputState.guessing--;
 					tmp46_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp46_AST);
 					match(INCREMENT);
-					assign_expr_AST = (AST)currentAST.root;
 					break;
 				}
 				case DECREMENT:
@@ -1242,7 +1244,6 @@ inputState.guessing--;
 					tmp47_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp47_AST);
 					match(DECREMENT);
-					assign_expr_AST = (AST)currentAST.root;
 					break;
 				}
 				case PLUSEQUALS:
@@ -1255,15 +1256,6 @@ inputState.guessing--;
 					expr();
 					astFactory.addASTChild(currentAST, returnAST);
 					}
-					if ( inputState.guessing==0 ) {
-						assign_expr_AST = (AST)currentAST.root;
-						assign_expr_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_assign_expr,"AST_assign_expr")).add(assign_expr_AST));
-						currentAST.root = assign_expr_AST;
-						currentAST.child = assign_expr_AST!=null &&assign_expr_AST.getFirstChild()!=null ?
-							assign_expr_AST.getFirstChild() : assign_expr_AST;
-						currentAST.advanceChildToEnd();
-					}
-					assign_expr_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -1271,6 +1263,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					assign_expr_AST = (AST)currentAST.root;
+					assign_expr_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_assign_expr,"AST_assign_expr")).add(assign_expr_AST));
+					currentAST.root = assign_expr_AST;
+					currentAST.child = assign_expr_AST!=null &&assign_expr_AST.getFirstChild()!=null ?
+						assign_expr_AST.getFirstChild() : assign_expr_AST;
+					currentAST.advanceChildToEnd();
+				}
+				assign_expr_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -1301,6 +1303,14 @@ inputState.guessing--;
 				match(ID);
 				method_params();
 				astFactory.addASTChild(currentAST, returnAST);
+				if ( inputState.guessing==0 ) {
+					method_call_AST = (AST)currentAST.root;
+					method_call_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_method_call,"AST_method_call")).add(method_call_AST));
+					currentAST.root = method_call_AST;
+					currentAST.child = method_call_AST!=null &&method_call_AST.getFirstChild()!=null ?
+						method_call_AST.getFirstChild() : method_call_AST;
+					currentAST.advanceChildToEnd();
+				}
 				method_call_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
@@ -1326,43 +1336,8 @@ inputState.guessing--;
 			AST expr_AST = null;
 			
 			try {      // for error handling
-				expr_t();
+				expr_nonroot();
 				astFactory.addASTChild(currentAST, returnAST);
-				{
-				switch ( LA(1)) {
-				case DIV:
-				case MULT:
-				case PERCENT:
-				case ANDAND:
-				case OROR:
-				case PLUS:
-				case MINUS:
-				case LEQ:
-				case NEQ:
-				case EQUALITY:
-				case GEQ:
-				case LESS:
-				case GREATER:
-				{
-					bin_op();
-					astFactory.addASTChild(currentAST, returnAST);
-					expr();
-					astFactory.addASTChild(currentAST, returnAST);
-					break;
-				}
-				case SEMICOLON:
-				case RBRACKET:
-				case RPAREN:
-				case COMMA:
-				{
-					break;
-				}
-				default:
-				{
-					throw new NoViableAltException(LT(1), getFilename());
-				}
-				}
-				}
 				if ( inputState.guessing==0 ) {
 					expr_AST = (AST)currentAST.root;
 					expr_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_expr,"AST_expr")).add(expr_AST));
@@ -1396,6 +1371,7 @@ inputState.guessing--;
 			AST compound_assign_op_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case PLUSEQUALS:
 				{
@@ -1403,7 +1379,6 @@ inputState.guessing--;
 					tmp49_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp49_AST);
 					match(PLUSEQUALS);
-					compound_assign_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case MINUSEQUALS:
@@ -1412,15 +1387,6 @@ inputState.guessing--;
 					tmp50_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp50_AST);
 					match(MINUSEQUALS);
-					if ( inputState.guessing==0 ) {
-						compound_assign_op_AST = (AST)currentAST.root;
-						compound_assign_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_compound_assign_op,"AST_compound_assign_op")).add(compound_assign_op_AST));
-						currentAST.root = compound_assign_op_AST;
-						currentAST.child = compound_assign_op_AST!=null &&compound_assign_op_AST.getFirstChild()!=null ?
-							compound_assign_op_AST.getFirstChild() : compound_assign_op_AST;
-						currentAST.advanceChildToEnd();
-					}
-					compound_assign_op_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -1428,6 +1394,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					compound_assign_op_AST = (AST)currentAST.root;
+					compound_assign_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_compound_assign_op,"AST_compound_assign_op")).add(compound_assign_op_AST));
+					currentAST.root = compound_assign_op_AST;
+					currentAST.child = compound_assign_op_AST!=null &&compound_assign_op_AST.getFirstChild()!=null ?
+						compound_assign_op_AST.getFirstChild() : compound_assign_op_AST;
+					currentAST.advanceChildToEnd();
+				}
+				compound_assign_op_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -1452,6 +1428,7 @@ inputState.guessing--;
 			AST assign_op_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case ASSIGNMENT:
 				{
@@ -1459,7 +1436,6 @@ inputState.guessing--;
 					tmp51_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp51_AST);
 					match(ASSIGNMENT);
-					assign_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case PLUSEQUALS:
@@ -1467,15 +1443,6 @@ inputState.guessing--;
 				{
 					compound_assign_op();
 					astFactory.addASTChild(currentAST, returnAST);
-					if ( inputState.guessing==0 ) {
-						assign_op_AST = (AST)currentAST.root;
-						assign_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_assign_op,"AST_assign_op")).add(assign_op_AST));
-						currentAST.root = assign_op_AST;
-						currentAST.child = assign_op_AST!=null &&assign_op_AST.getFirstChild()!=null ?
-							assign_op_AST.getFirstChild() : assign_op_AST;
-						currentAST.advanceChildToEnd();
-					}
-					assign_op_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -1483,6 +1450,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					assign_op_AST = (AST)currentAST.root;
+					assign_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_assign_op,"AST_assign_op")).add(assign_op_AST));
+					currentAST.root = assign_op_AST;
+					currentAST.child = assign_op_AST!=null &&assign_op_AST.getFirstChild()!=null ?
+						assign_op_AST.getFirstChild() : assign_op_AST;
+					currentAST.advanceChildToEnd();
+				}
+				assign_op_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -1507,10 +1484,10 @@ inputState.guessing--;
 			AST method_params_AST = null;
 			
 			try {      // for error handling
-				boolean synPredMatched48 = false;
+				boolean synPredMatched52 = false;
 				if (((LA(1)==LPAREN) && (LA(2)==RPAREN))) {
-					int _m48 = mark();
-					synPredMatched48 = true;
+					int _m52 = mark();
+					synPredMatched52 = true;
 					inputState.guessing++;
 					try {
 						{
@@ -1519,12 +1496,12 @@ inputState.guessing--;
 						}
 					}
 					catch (RecognitionException pe) {
-						synPredMatched48 = false;
+						synPredMatched52 = false;
 					}
-					rewind(_m48);
+					rewind(_m52);
 inputState.guessing--;
 				}
-				if ( synPredMatched48 ) {
+				if ( synPredMatched52 ) {
 					AST tmp52_AST = null;
 					tmp52_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp52_AST);
@@ -1544,24 +1521,24 @@ inputState.guessing--;
 					method_params_AST = (AST)currentAST.root;
 				}
 				else {
-					boolean synPredMatched52 = false;
+					boolean synPredMatched56 = false;
 					if (((LA(1)==LPAREN) && (_tokenSet_15.member(LA(2))) && (_tokenSet_16.member(LA(3))))) {
-						int _m52 = mark();
-						synPredMatched52 = true;
+						int _m56 = mark();
+						synPredMatched56 = true;
 						inputState.guessing++;
 						try {
 							{
 							match(LPAREN);
 							expr();
 							{
-							_loop51:
+							_loop55:
 							do {
 								if ((LA(1)==COMMA)) {
 									match(COMMA);
 									expr();
 								}
 								else {
-									break _loop51;
+									break _loop55;
 								}
 								
 							} while (true);
@@ -1570,12 +1547,12 @@ inputState.guessing--;
 							}
 						}
 						catch (RecognitionException pe) {
-							synPredMatched52 = false;
+							synPredMatched56 = false;
 						}
-						rewind(_m52);
+						rewind(_m56);
 inputState.guessing--;
 					}
-					if ( synPredMatched52 ) {
+					if ( synPredMatched56 ) {
 						{
 						AST tmp54_AST = null;
 						tmp54_AST = astFactory.create(LT(1));
@@ -1584,7 +1561,7 @@ inputState.guessing--;
 						expr();
 						astFactory.addASTChild(currentAST, returnAST);
 						{
-						_loop55:
+						_loop59:
 						do {
 							if ((LA(1)==COMMA)) {
 								AST tmp55_AST = null;
@@ -1595,7 +1572,7 @@ inputState.guessing--;
 								astFactory.addASTChild(currentAST, returnAST);
 							}
 							else {
-								break _loop55;
+								break _loop59;
 							}
 							
 						} while (true);
@@ -1623,7 +1600,7 @@ inputState.guessing--;
 						import_arg();
 						astFactory.addASTChild(currentAST, returnAST);
 						{
-						_loop57:
+						_loop61:
 						do {
 							if ((LA(1)==COMMA)) {
 								AST tmp58_AST = null;
@@ -1634,7 +1611,7 @@ inputState.guessing--;
 								astFactory.addASTChild(currentAST, returnAST);
 							}
 							else {
-								break _loop57;
+								break _loop61;
 							}
 							
 						} while (true);
@@ -1681,6 +1658,7 @@ inputState.guessing--;
 			AST import_arg_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case CHARLITERAL:
 				case DECIMALLITERAL:
@@ -1695,7 +1673,6 @@ inputState.guessing--;
 				{
 					expr();
 					astFactory.addASTChild(currentAST, returnAST);
-					import_arg_AST = (AST)currentAST.root;
 					break;
 				}
 				case STRINGLITERAL:
@@ -1704,15 +1681,6 @@ inputState.guessing--;
 					tmp60_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp60_AST);
 					match(STRINGLITERAL);
-					if ( inputState.guessing==0 ) {
-						import_arg_AST = (AST)currentAST.root;
-						import_arg_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_import_arg,"AST_import_arg")).add(import_arg_AST));
-						currentAST.root = import_arg_AST;
-						currentAST.child = import_arg_AST!=null &&import_arg_AST.getFirstChild()!=null ?
-							import_arg_AST.getFirstChild() : import_arg_AST;
-						currentAST.advanceChildToEnd();
-					}
-					import_arg_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -1720,6 +1688,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					import_arg_AST = (AST)currentAST.root;
+					import_arg_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_import_arg,"AST_import_arg")).add(import_arg_AST));
+					currentAST.root = import_arg_AST;
+					currentAST.child = import_arg_AST!=null &&import_arg_AST.getFirstChild()!=null ?
+						import_arg_AST.getFirstChild() : import_arg_AST;
+					currentAST.advanceChildToEnd();
+				}
+				import_arg_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -1732,6 +1710,68 @@ inputState.guessing--;
 			returnAST = import_arg_AST;
 		} finally { // debugging
 			traceOut("import_arg");
+		}
+	}
+	
+	protected final void expr_nonroot() throws RecognitionException, TokenStreamException {
+		
+		traceIn("expr_nonroot");
+		try { // debugging
+			returnAST = null;
+			ASTPair currentAST = new ASTPair();
+			AST expr_nonroot_AST = null;
+			
+			try {      // for error handling
+				expr_t();
+				astFactory.addASTChild(currentAST, returnAST);
+				{
+				switch ( LA(1)) {
+				case DIV:
+				case MULT:
+				case PERCENT:
+				case ANDAND:
+				case OROR:
+				case PLUS:
+				case MINUS:
+				case LEQ:
+				case NEQ:
+				case EQUALITY:
+				case GEQ:
+				case LESS:
+				case GREATER:
+				{
+					bin_op();
+					astFactory.addASTChild(currentAST, returnAST);
+					expr_nonroot();
+					astFactory.addASTChild(currentAST, returnAST);
+					break;
+				}
+				case SEMICOLON:
+				case RBRACKET:
+				case RPAREN:
+				case COMMA:
+				{
+					break;
+				}
+				default:
+				{
+					throw new NoViableAltException(LT(1), getFilename());
+				}
+				}
+				}
+				expr_nonroot_AST = (AST)currentAST.root;
+			}
+			catch (RecognitionException ex) {
+				if (inputState.guessing==0) {
+					reportError(ex);
+					recover(ex,_tokenSet_14);
+				} else {
+				  throw ex;
+				}
+			}
+			returnAST = expr_nonroot_AST;
+		} finally { // debugging
+			traceOut("expr_nonroot");
 		}
 	}
 	
@@ -1811,10 +1851,10 @@ inputState.guessing--;
 					break;
 				}
 				default:
-					boolean synPredMatched66 = false;
+					boolean synPredMatched71 = false;
 					if (((LA(1)==ID) && (LA(2)==LPAREN))) {
-						int _m66 = mark();
-						synPredMatched66 = true;
+						int _m71 = mark();
+						synPredMatched71 = true;
 						inputState.guessing++;
 						try {
 							{
@@ -1822,12 +1862,12 @@ inputState.guessing--;
 							}
 						}
 						catch (RecognitionException pe) {
-							synPredMatched66 = false;
+							synPredMatched71 = false;
 						}
-						rewind(_m66);
+						rewind(_m71);
 inputState.guessing--;
 					}
-					if ( synPredMatched66 ) {
+					if ( synPredMatched71 ) {
 						method_call();
 						astFactory.addASTChild(currentAST, returnAST);
 						expr_t_AST = (AST)currentAST.root;
@@ -1865,6 +1905,7 @@ inputState.guessing--;
 			AST bin_op_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case DIV:
 				case MULT:
@@ -1874,7 +1915,6 @@ inputState.guessing--;
 				{
 					arith_op();
 					astFactory.addASTChild(currentAST, returnAST);
-					bin_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case LEQ:
@@ -1884,7 +1924,6 @@ inputState.guessing--;
 				{
 					rel_op();
 					astFactory.addASTChild(currentAST, returnAST);
-					bin_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case NEQ:
@@ -1892,7 +1931,6 @@ inputState.guessing--;
 				{
 					eq_op();
 					astFactory.addASTChild(currentAST, returnAST);
-					bin_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case ANDAND:
@@ -1900,15 +1938,6 @@ inputState.guessing--;
 				{
 					cond_op();
 					astFactory.addASTChild(currentAST, returnAST);
-					if ( inputState.guessing==0 ) {
-						bin_op_AST = (AST)currentAST.root;
-						bin_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_bin_op,"AST_bin_op")).add(bin_op_AST));
-						currentAST.root = bin_op_AST;
-						currentAST.child = bin_op_AST!=null &&bin_op_AST.getFirstChild()!=null ?
-							bin_op_AST.getFirstChild() : bin_op_AST;
-						currentAST.advanceChildToEnd();
-					}
-					bin_op_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -1916,6 +1945,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					bin_op_AST = (AST)currentAST.root;
+					bin_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_bin_op,"AST_bin_op")).add(bin_op_AST));
+					currentAST.root = bin_op_AST;
+					currentAST.child = bin_op_AST!=null &&bin_op_AST.getFirstChild()!=null ?
+						bin_op_AST.getFirstChild() : bin_op_AST;
+					currentAST.advanceChildToEnd();
+				}
+				bin_op_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -1993,6 +2032,7 @@ inputState.guessing--;
 			AST arith_op_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case PLUS:
 				{
@@ -2000,7 +2040,6 @@ inputState.guessing--;
 					tmp67_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp67_AST);
 					match(PLUS);
-					arith_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case MINUS:
@@ -2009,7 +2048,6 @@ inputState.guessing--;
 					tmp68_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp68_AST);
 					match(MINUS);
-					arith_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case MULT:
@@ -2018,7 +2056,6 @@ inputState.guessing--;
 					tmp69_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp69_AST);
 					match(MULT);
-					arith_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case DIV:
@@ -2027,7 +2064,6 @@ inputState.guessing--;
 					tmp70_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp70_AST);
 					match(DIV);
-					arith_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case PERCENT:
@@ -2036,15 +2072,6 @@ inputState.guessing--;
 					tmp71_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp71_AST);
 					match(PERCENT);
-					if ( inputState.guessing==0 ) {
-						arith_op_AST = (AST)currentAST.root;
-						arith_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_arith_op,"AST_arith_op")).add(arith_op_AST));
-						currentAST.root = arith_op_AST;
-						currentAST.child = arith_op_AST!=null &&arith_op_AST.getFirstChild()!=null ?
-							arith_op_AST.getFirstChild() : arith_op_AST;
-						currentAST.advanceChildToEnd();
-					}
-					arith_op_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -2052,6 +2079,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					arith_op_AST = (AST)currentAST.root;
+					arith_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_arith_op,"AST_arith_op")).add(arith_op_AST));
+					currentAST.root = arith_op_AST;
+					currentAST.child = arith_op_AST!=null &&arith_op_AST.getFirstChild()!=null ?
+						arith_op_AST.getFirstChild() : arith_op_AST;
+					currentAST.advanceChildToEnd();
+				}
+				arith_op_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -2076,6 +2113,7 @@ inputState.guessing--;
 			AST rel_op_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case LESS:
 				{
@@ -2083,7 +2121,6 @@ inputState.guessing--;
 					tmp72_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp72_AST);
 					match(LESS);
-					rel_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case GREATER:
@@ -2092,7 +2129,6 @@ inputState.guessing--;
 					tmp73_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp73_AST);
 					match(GREATER);
-					rel_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case LEQ:
@@ -2101,7 +2137,6 @@ inputState.guessing--;
 					tmp74_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp74_AST);
 					match(LEQ);
-					rel_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case GEQ:
@@ -2110,15 +2145,6 @@ inputState.guessing--;
 					tmp75_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp75_AST);
 					match(GEQ);
-					if ( inputState.guessing==0 ) {
-						rel_op_AST = (AST)currentAST.root;
-						rel_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_rel_op,"AST_rel_op")).add(rel_op_AST));
-						currentAST.root = rel_op_AST;
-						currentAST.child = rel_op_AST!=null &&rel_op_AST.getFirstChild()!=null ?
-							rel_op_AST.getFirstChild() : rel_op_AST;
-						currentAST.advanceChildToEnd();
-					}
-					rel_op_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -2126,6 +2152,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					rel_op_AST = (AST)currentAST.root;
+					rel_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_rel_op,"AST_rel_op")).add(rel_op_AST));
+					currentAST.root = rel_op_AST;
+					currentAST.child = rel_op_AST!=null &&rel_op_AST.getFirstChild()!=null ?
+						rel_op_AST.getFirstChild() : rel_op_AST;
+					currentAST.advanceChildToEnd();
+				}
+				rel_op_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -2150,6 +2186,7 @@ inputState.guessing--;
 			AST eq_op_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case EQUALITY:
 				{
@@ -2157,7 +2194,6 @@ inputState.guessing--;
 					tmp76_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp76_AST);
 					match(EQUALITY);
-					eq_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case NEQ:
@@ -2166,15 +2202,6 @@ inputState.guessing--;
 					tmp77_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp77_AST);
 					match(NEQ);
-					if ( inputState.guessing==0 ) {
-						eq_op_AST = (AST)currentAST.root;
-						eq_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_eq_op,"AST_eq_op")).add(eq_op_AST));
-						currentAST.root = eq_op_AST;
-						currentAST.child = eq_op_AST!=null &&eq_op_AST.getFirstChild()!=null ?
-							eq_op_AST.getFirstChild() : eq_op_AST;
-						currentAST.advanceChildToEnd();
-					}
-					eq_op_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -2182,6 +2209,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					eq_op_AST = (AST)currentAST.root;
+					eq_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_eq_op,"AST_eq_op")).add(eq_op_AST));
+					currentAST.root = eq_op_AST;
+					currentAST.child = eq_op_AST!=null &&eq_op_AST.getFirstChild()!=null ?
+						eq_op_AST.getFirstChild() : eq_op_AST;
+					currentAST.advanceChildToEnd();
+				}
+				eq_op_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -2206,6 +2243,7 @@ inputState.guessing--;
 			AST cond_op_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case ANDAND:
 				{
@@ -2213,7 +2251,6 @@ inputState.guessing--;
 					tmp78_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp78_AST);
 					match(ANDAND);
-					cond_op_AST = (AST)currentAST.root;
 					break;
 				}
 				case OROR:
@@ -2222,15 +2259,6 @@ inputState.guessing--;
 					tmp79_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp79_AST);
 					match(OROR);
-					if ( inputState.guessing==0 ) {
-						cond_op_AST = (AST)currentAST.root;
-						cond_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_cond_op,"AST_cond_op")).add(cond_op_AST));
-						currentAST.root = cond_op_AST;
-						currentAST.child = cond_op_AST!=null &&cond_op_AST.getFirstChild()!=null ?
-							cond_op_AST.getFirstChild() : cond_op_AST;
-						currentAST.advanceChildToEnd();
-					}
-					cond_op_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -2238,6 +2266,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					cond_op_AST = (AST)currentAST.root;
+					cond_op_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_cond_op,"AST_cond_op")).add(cond_op_AST));
+					currentAST.root = cond_op_AST;
+					currentAST.child = cond_op_AST!=null &&cond_op_AST.getFirstChild()!=null ?
+						cond_op_AST.getFirstChild() : cond_op_AST;
+					currentAST.advanceChildToEnd();
+				}
+				cond_op_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -2383,6 +2421,7 @@ inputState.guessing--;
 			AST bool_literal_AST = null;
 			
 			try {      // for error handling
+				{
 				switch ( LA(1)) {
 				case RESERVED_TRUE:
 				{
@@ -2390,7 +2429,6 @@ inputState.guessing--;
 					tmp85_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp85_AST);
 					match(RESERVED_TRUE);
-					bool_literal_AST = (AST)currentAST.root;
 					break;
 				}
 				case RESERVED_FALSE:
@@ -2399,15 +2437,6 @@ inputState.guessing--;
 					tmp86_AST = astFactory.create(LT(1));
 					astFactory.addASTChild(currentAST, tmp86_AST);
 					match(RESERVED_FALSE);
-					if ( inputState.guessing==0 ) {
-						bool_literal_AST = (AST)currentAST.root;
-						bool_literal_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_bool_literal,"AST_bool_literal")).add(bool_literal_AST));
-						currentAST.root = bool_literal_AST;
-						currentAST.child = bool_literal_AST!=null &&bool_literal_AST.getFirstChild()!=null ?
-							bool_literal_AST.getFirstChild() : bool_literal_AST;
-						currentAST.advanceChildToEnd();
-					}
-					bool_literal_AST = (AST)currentAST.root;
 					break;
 				}
 				default:
@@ -2415,6 +2444,16 @@ inputState.guessing--;
 					throw new NoViableAltException(LT(1), getFilename());
 				}
 				}
+				}
+				if ( inputState.guessing==0 ) {
+					bool_literal_AST = (AST)currentAST.root;
+					bool_literal_AST = (AST)astFactory.make( (new ASTArray(2)).add(astFactory.create(AST_bool_literal,"AST_bool_literal")).add(bool_literal_AST));
+					currentAST.root = bool_literal_AST;
+					currentAST.child = bool_literal_AST!=null &&bool_literal_AST.getFirstChild()!=null ?
+						bool_literal_AST.getFirstChild() : bool_literal_AST;
+					currentAST.advanceChildToEnd();
+				}
+				bool_literal_AST = (AST)currentAST.root;
 			}
 			catch (RecognitionException ex) {
 				if (inputState.guessing==0) {
@@ -2515,6 +2554,7 @@ inputState.guessing--;
 		"AST_assign_expr",
 		"AST_assign_op",
 		"AST_compound_assign_op",
+		"AST_method_call",
 		"AST_method_params_none",
 		"AST_method_params_local",
 		"AST_method_params_import",
