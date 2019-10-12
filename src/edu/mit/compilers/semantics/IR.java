@@ -247,7 +247,7 @@ public class IR {
 	public abstract static class Statement extends IR.Node {}
 	public class AssignmentStatement extends Statement {
 		public Location loc;
-		public Op op;
+		public Op op; //three possible ops: plusequal(1), minusequal(1), assignment
 		public Expr assignExpr;
 		public AssignmentStatement(ParseTree.Node node_loc, ParseTree.Node node_incdec) {
 			loc = Location.create(node_loc);
