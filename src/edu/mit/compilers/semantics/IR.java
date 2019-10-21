@@ -474,10 +474,10 @@ public class IR {
 					members.add(new BoolLiteral(this, child));
 				else if(child.type == ParseTree.Node.Type.AST_int_literal) { //semantic check due to signs
 					if(!members.isEmpty() && (members.get(members.size()-1) instanceof Op) &&
-						((Op)members.get(members.size()-1)).type == Op.Type.minus &&
-						child.child(0).text.equals("9223372036854775808")) {
+						((Op)members.get(members.size()-1)).type == Op.Type.minus) {
 							members.remove(members.size()-1);
-							members.add(new IntLiteral(this, -9223372036854775808L));
+							child.child(0).text = "-" + child.child(0).text;
+							members.add(new IntLiteral(this, child));
 						}
 					else members.add(new IntLiteral(this, child));
 				}
