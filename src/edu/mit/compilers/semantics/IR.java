@@ -10,6 +10,13 @@ import edu.mit.compilers.Utils;
 public class IR {
 	private ParseTree parseTree;
 	public IR.Node root;
+	
+	// Add Symbol table
+	public SymbolTable symbolTable;
+
+	// Add Method table
+	public MethodSymbolTable methodTable;
+	
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;
 	}
