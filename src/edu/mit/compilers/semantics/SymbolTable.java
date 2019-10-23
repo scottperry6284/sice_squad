@@ -1,26 +1,33 @@
 package edu.mit.compilers.semantics;
+import edu.mit.compilers.irclasses.*;
 
 public class SymbolTable {
-    /*HashMap<String, Boolean> node;
-    SymbolElement parent; 
 
-	public SymbolElement(SymbolElement par) {
-        parent = par; 
+	public int level;
+	public SymbolTable parent = null;
+	public HashMap<String, IR> SymbolTableEntries = new HashMap<String, IR>();
+	public ArrayList<Symboltable> childNodes = new ArrayList<Symboltable>() ;
 
-		node = new HashMap<String, Boolean>();
+	public Boolean add (String ID, IR node){
+		if (SymbolTableEntries.containsKey(Id)){
+			return false;
+		} else {
+			SymbolTableEntries.put(ID, node);
+			return true;
+		}
 	}
-    
-    public void add (String var){
-        node.put(var, true); 
-    }
 
-    public int find (String var){
-        if (node.get(var)) return 0; 
-        if (parent == null){
-            return -1; 
-        }
-        int lev = parent.find(var); 
-        if (lev == -1) return -1; 
-        return 1 + lev; 
-    } */
+	public IR find (String ID) {
+		if(hashSymbolTable.containsKey(id)) {
+			return hashSymbolTable.get(id);
+		}
+		if(parent != null) {
+			return parent.find(ID);
+		}
+		return null;
+	}
+
+	public String prettyPrint() {
+		return "\t".repeat(level) + Integer.toString(hashSymbolTable.size());
+	}
 }

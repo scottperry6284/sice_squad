@@ -8,6 +8,15 @@ import edu.mit.compilers.Utils;
 public class IR {
 	private ParseTree parseTree;
 	private IR.Node root;
+
+	// Add a Parent Symbol tables
+	public ParentSymboltable symbolTable;
+
+	// Add a method tables
+	public ParentMethodtable methodTable;
+
+
+	public
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;
 	}
@@ -645,8 +654,9 @@ public class IR {
 			return ret;
 		}
 	}
-	public void build() {
+	public Node build() {
 		root = new Program(parseTree.root);
 		root.print();
+		return root;
 	}
 }
