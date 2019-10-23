@@ -9,20 +9,7 @@ import edu.mit.compilers.Utils;
 
 public class IR {
 	private ParseTree parseTree;
-<<<<<<< HEAD
-	private IR.Node root;
-
-	// Add a Parent Symbol tables
-	public ParentSymboltable symbolTable;
-
-	// Add a method tables
-	public ParentMethodtable methodTable;
-
-
-	public
-=======
 	public IR.Node root;
->>>>>>> 679cf15b971647751de5e09476d15a96eedc9964
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;
 	}
@@ -673,12 +660,8 @@ public class IR {
 			return ret;
 		}
 	}
-	public Node build() {
+	public void build() {
 		root = new Program(parseTree.root);
-<<<<<<< HEAD
-		root.print();
-		return root;
-=======
 	}
 	public void postprocess() {
 		Queue<IR.Node> nodes = new ArrayDeque<>();
@@ -710,6 +693,5 @@ public class IR {
 				}
 			}
 		}
->>>>>>> 679cf15b971647751de5e09476d15a96eedc9964
 	}
 }
