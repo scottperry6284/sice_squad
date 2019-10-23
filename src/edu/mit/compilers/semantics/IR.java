@@ -1,12 +1,15 @@
 package edu.mit.compilers.semantics;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
 import edu.mit.compilers.Utils;
 
 public class IR {
 	private ParseTree parseTree;
+<<<<<<< HEAD
 	private IR.Node root;
 
 	// Add a Parent Symbol tables
@@ -17,6 +20,9 @@ public class IR {
 
 
 	public
+=======
+	public IR.Node root;
+>>>>>>> 679cf15b971647751de5e09476d15a96eedc9964
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;
 	}
@@ -268,8 +274,11 @@ public class IR {
 	}
 	public class AssignmentStatement extends Statement {
 		public Location loc;
-		public Op op; //three possible ops: plusequal(1), minusequal(1), assignment
+		public Op op; //three possible ops: plusequal, minusequal, assignment
 		public Expr assignExpr;
+		public AssignmentStatement(IR.Node parent) {
+			super(parent);
+		}
 		public AssignmentStatement(IR.Node parent, ParseTree.Node node_loc, ParseTree.Node node_incdec) {
 			super(parent);
 			loc = Location.create(this, node_loc);
@@ -367,6 +376,9 @@ public class IR {
 	public class WhileStatement extends Statement {
 		public Expr condition;
 		public Block block;
+		public WhileStatement(IR.Node parent) {
+			super(parent);
+		}
 		public WhileStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_statement_while);
@@ -473,8 +485,15 @@ public class IR {
 					members.add(Location.create(this, child));
 				else if(child.type == ParseTree.Node.Type.AST_bool_literal)
 					members.add(new BoolLiteral(this, child));
-				else if(child.type == ParseTree.Node.Type.AST_int_literal)
-					members.add(new IntLiteral(this, child));
+				else if(child.type == ParseTree.Node.Type.AST_int_literal) { //semantic check due to signs
+					if(!members.isEmpty() && (members.get(members.size()-1) instanceof Op) &&
+						((Op)members.get(members.size()-1)).type == Op.Type.minus) {
+							members.remove(members.size()-1);
+							child.child(0).text = "-" + child.child(0).text;
+							members.add(new IntLiteral(this, child));
+						}
+					else members.add(new IntLiteral(this, child));
+				}
 				else if(child.type == ParseTree.Node.Type.AST_char_literal)
 					members.add(new CharLiteral(this, child));
 				else if(child.type == ParseTree.Node.Type.AST_expr)
@@ -656,7 +675,41 @@ public class IR {
 	}
 	public Node build() {
 		root = new Program(parseTree.root);
+<<<<<<< HEAD
 		root.print();
 		return root;
+=======
+	}
+	public void postprocess() {
+		Queue<IR.Node> nodes = new ArrayDeque<>();
+		nodes.add(root);
+		while(!nodes.isEmpty()) {
+			IR.Node _node = nodes.poll();
+			if(_node.getChildren() != null)
+				for(IR.Node child: _node.getChildren())
+					nodes.add(child);
+			//convert all For statements to While statements
+			if(_node instanceof Block) {
+				Block block = (Block)_node;
+				for(int i=0; i<block.statements.size(); i++) {
+					Statement statement = block.statements.get(i);
+					if(statement instanceof ForStatement) {
+						ForStatement fnode = (ForStatement)statement;
+						WhileStatement wnode = new WhileStatement(block);
+						wnode.block = fnode.block;
+						wnode.condition = fnode.condition;
+						wnode.block.statements.add(fnode.iteration);
+						block.statements.set(i, wnode);
+						AssignmentStatement anode = new AssignmentStatement(block);
+						anode.loc = fnode.initLoc;
+						anode.op = new Op(anode, Op.Type.assign);
+						anode.assignExpr = fnode.initExpr;
+						block.statements.add(i, anode);
+						i++;
+					}
+				}
+			}
+		}
+>>>>>>> 679cf15b971647751de5e09476d15a96eedc9964
 	}
 }

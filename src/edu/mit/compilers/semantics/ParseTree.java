@@ -32,7 +32,7 @@ public class ParseTree {
 		public List<Node> children;
 		public final int line, col;
 		public final int type;
-		public final String text;
+		public String text;
 		
 		public Node(AST ast) {
 			line = ast.getLine();

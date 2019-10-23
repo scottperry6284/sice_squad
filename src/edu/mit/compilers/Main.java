@@ -86,6 +86,8 @@ token.getType() != DecafParserTokenTypes.EOF;
 	      try {
 	    	  IR irbuilder = new IR(parseTree);
 	    	  irbuilder.build();
+	    	  irbuilder.postprocess();
+	    	  irbuilder.root.print();
 	      }
 	      catch(Exception e) {
 	    	  e.printStackTrace();
