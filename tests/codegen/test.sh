@@ -28,7 +28,7 @@ function dcf-to-asm {
 # $1 -> assembly file to assemble
 # $2 -> executable file to create
 function asm-to-exec {
-  gcc -no-pie "$1" -o "$2"
+  gcc -no-pie -O0 "$1" -o "$2"
 }
 
 # $1 -> path
