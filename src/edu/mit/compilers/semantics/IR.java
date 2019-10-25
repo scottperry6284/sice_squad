@@ -398,6 +398,8 @@ public class IR {
 			else expr = null; //returns nothing
 		}
 		public List<IR.Node> getChildren() {
+			if(expr == null)
+				return null;
 			List<IR.Node> children = new ArrayList<>();
 			children.add(expr);
 			return children;

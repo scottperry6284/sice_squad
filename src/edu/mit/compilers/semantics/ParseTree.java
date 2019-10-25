@@ -62,6 +62,6 @@ public class ParseTree {
 	}
 	public void build() {
 		root = new Node(parser.getAST());
-		root.print();
+		//root.print();
 	}
 }
