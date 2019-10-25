@@ -40,4 +40,31 @@ public class Semantics{
             check20 (children.get(child)); 
         }
     }
+    public static void check8 (IR.Node node){
+        if (node == null) return; 
+        if (node instanceof ReturnStatement){
+            if (!(((ReturnStatement)node).expr == null || ((ReturnStatement)node).expr.members == null)){
+                if (((ReturnStatement)node).expr.members.size() > 0){
+                    IR.Node par = node.parent; 
+                    boolean good = false; 
+                    while (par != null){
+                        if ((par instanceof MethodDecl) && ((MethodDecl)par).type.getName() != "void"){
+                            good = true; 
+                            break; 
+                        }
+                        par = par.parent; 
+                    }
+                    if (!good){
+                        throw new IllegalStateException ("Bad use of return."); 
+                    }                 
+                }   
+            }
+        }
+        List <IR.Node> children = node.getChildren(); 
+        if (children == null) return; 
+
+        for (int child=0; child<children.size(); child++){
+            check8 (children.get(child)); 
+        }
+    }
 }
