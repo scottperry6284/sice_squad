@@ -7,6 +7,7 @@ import edu.mit.compilers.semantics.IR;
 import edu.mit.compilers.semantics.ParseTree;
 import edu.mit.compilers.tools.CLI;
 import edu.mit.compilers.tools.CLI.Action;
+import edu.mit.compilers.semantics.Semantics; 
 
 class Main {
   public static void main(String[] args) {
@@ -88,6 +89,7 @@ token.getType() != DecafParserTokenTypes.EOF;
 	    	  irbuilder.build();
 	    	  irbuilder.postprocess();
 	    	  irbuilder.root.print();
+          Semantics.check4 (irbuilder.root); 
 	      }
 	      catch(Exception e) {
 	    	  e.printStackTrace();

@@ -671,7 +671,6 @@ public class IR {
 	}
 	public void build() {
 		root = new Program(parseTree.root);
-		Boolean ok = Semantics.check4(root); 
 	}
 	public void postprocess() {
 		Queue<IR.Node> nodes = new ArrayDeque<>();
