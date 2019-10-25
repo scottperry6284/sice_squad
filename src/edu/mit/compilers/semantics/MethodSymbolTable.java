@@ -1,3 +1,4 @@
+/*
 package edu.mit.compilers.semantics;
 import edu.mit.compilers.irclasses.*;
 
@@ -18,3 +19,4 @@ public class MethodSymbolTable {
         }
     }
 }
+*/

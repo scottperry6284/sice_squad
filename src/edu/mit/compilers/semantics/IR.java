@@ -6,16 +6,18 @@ import java.util.List;
 import java.util.Queue;
 
 import edu.mit.compilers.Utils;
+import edu.mit.compilers.semantics.Semantics.*; 
+//import edu.mit.compilers.semantics.SymbolTable.*; 
 
 public class IR {
 	private ParseTree parseTree;
 	public IR.Node root;
 	
 	// Add Symbol table
-	public SymbolTable symbolTable;
+	//public SymbolTable symbolTable;
 
 	// Add Method table
-	public MethodSymbolTable methodTable;
+	//public MethodSymbolTable methodTable;
 	
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;
@@ -669,6 +671,7 @@ public class IR {
 	}
 	public void build() {
 		root = new Program(parseTree.root);
+		Boolean ok = Semantics.check4(root); 
 	}
 	public void postprocess() {
 		Queue<IR.Node> nodes = new ArrayDeque<>();

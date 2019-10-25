@@ -1,5 +1,6 @@
+/*
 package edu.mit.compilers.semantics;
-import edu.mit.compilers.irclasses.*;
+import edu.mit.compilers.IR.*;
 
 public class SymbolTable {
 
@@ -31,3 +32,4 @@ public class SymbolTable {
 		return "\t".repeat(level) + Integer.toString(hashSymbolTable.size());
 	}
 }
+*/
