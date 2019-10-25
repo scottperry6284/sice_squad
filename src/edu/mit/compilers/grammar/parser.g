@@ -52,6 +52,7 @@ tokens
   AST_char_literal;
   AST_bool_literal;
   AST_int_literal;
+  AST_len;
 }
 
 // Java glue code that makes error reporting easier.
@@ -136,7 +137,7 @@ protected statement4: RESERVED_FOR LPAREN ID ASSIGNMENT expr SEMICOLON
 					  {## = #(#[AST_statement_for, "AST_statement_for"], ##);};
 protected statement5: RESERVED_WHILE LPAREN expr RPAREN block
 	 				  {## = #(#[AST_statement_while, "AST_statement_while"], ##);};
-protected statement6: RESERVED_RETURN expr SEMICOLON
+protected statement6: RESERVED_RETURN (expr)? SEMICOLON
 					  {## = #(#[AST_statement_return, "AST_statement_return"], ##);};
 protected statement7: RESERVED_BREAK SEMICOLON
 					  {## = #(#[AST_statement_break, "AST_statement_break"], ##);};
@@ -172,7 +173,10 @@ protected expr_nonroot: expr_t (bin_op expr_nonroot)?;
 protected expr_t: (MINUS) => MINUS expr_t |
 				  (NOT) => NOT expr_t |
 				  (method_call) => method_call |
-				  location | literal | (RESERVED_LEN ID) | (LPAREN expr RPAREN);
+				  location | literal | len | (LPAREN expr RPAREN);
+
+len: RESERVED_LEN LPAREN ID RPAREN
+	{## = #(#[AST_len, "AST_len"], ##);};
 
 import_arg: (expr | STRINGLITERAL)
 			{## = #(#[AST_import_arg, "AST_import_arg"], ##);};

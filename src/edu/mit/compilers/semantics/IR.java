@@ -393,7 +393,9 @@ public class IR {
 		public ReturnStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_statement_return);
-			expr = new Expr(this, node.child(1));
+			if(node.children.size() == 3)
+				expr = new Expr(this, node.child(1));
+			else expr = null; //returns nothing
 		}
 		public List<IR.Node> getChildren() {
 			List<IR.Node> children = new ArrayList<>();
@@ -492,6 +494,8 @@ public class IR {
 				}
 				else if(child.type == ParseTree.Node.Type.AST_char_literal)
 					members.add(new CharLiteral(this, child));
+				else if(child.type == ParseTree.Node.Type.AST_len)
+					members.add(new Len(this, child));
 				else if(child.type == ParseTree.Node.Type.AST_expr)
 					members.add(new Expr(this, child));
 				else if(child.type == ParseTree.Node.Type.LPAREN || 
@@ -504,6 +508,14 @@ public class IR {
 			List<IR.Node> children = new ArrayList<>();
 			children.addAll(members);
 			return children;
+		}
+	}
+	public static class Len extends Node {
+		public String ID;
+		public Len(IR.Node parent, ParseTree.Node node) {
+			super(parent);
+			expectType(node, ParseTree.Node.Type.AST_len);
+			ID = node.child(2).text;
 		}
 	}
 	public static class Op extends Node {

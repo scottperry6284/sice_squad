@@ -95,3 +95,4 @@ AST_location_noarray=95
 AST_char_literal=96
 AST_bool_literal=97
 AST_int_literal=98
+AST_len=99

@@ -100,4 +100,5 @@ public interface DecafParserTokenTypes {
 	int AST_char_literal = 96;
 	int AST_bool_literal = 97;
 	int AST_int_literal = 98;
+	int AST_len = 99;
 }
