@@ -87,6 +87,7 @@ public class Semantics{
         return ans; 
     }
     public static void check6 (IR.Node node){
+        /* also handles check 17 */
         if (node == null) return; 
         if (node instanceof Expr){
             String ret = ((Expr)node).getType(); 
@@ -97,6 +98,82 @@ public class Semantics{
 
         for (int child=0; child<children.size(); child++){
             check6 (children.get(child)); 
+        }
+    }   
+    public static void check9 (IR.Node node){
+        if (node == null) return; 
+        if (node instanceof ReturnStatement){
+            String type = ""; 
+            if (!(((ReturnStatement)node).expr == null)){
+                type = ((ReturnStatement)node).expr.getType(); 
+            }
+            else{
+                type = "void"; 
+            }
+            IR.Node par = node.parent; 
+            boolean good = false; 
+            while (par != null){
+                if (par instanceof MethodDecl){
+                    if (((MethodDecl)par).type.getName().equals(type)) good = true; 
+                    break; 
+                }
+                par = par.parent; 
+            }
+            if (!good){
+                throw new IllegalStateException ("Bad use of return."); 
+            }       
+        }
+        List <IR.Node> children = node.getChildren(); 
+        if (children == null) return; 
+
+        for (int child=0; child<children.size(); child++){
+            check9 (children.get(child)); 
+        }
+    }
+    public static void check12 (IR.Node node){
+        if (node == null) return; 
+        if (node instanceof LocationArray){
+            Node arr = node.symbolTable.find(((LocationArray)node).ID); 
+            if (!(arr instanceof FieldDeclArray)){
+                throw new IllegalStateException ("Bad location array."); 
+            }
+            if (((LocationArray)node).index.getType() != "int"){
+                throw new IllegalStateException ("Bad location array."); 
+            }
+        }
+        List <IR.Node> children = node.getChildren(); 
+        if (children == null) return; 
+
+        for (int child=0; child<children.size(); child++){
+            check12 (children.get(child)); 
+        }
+    }
+    public static void check18 (IR.Node node){
+        /* also handles check 19 */
+        if (node == null) return; 
+        if (node instanceof AssignmentStatement){
+            if (!(((AssignmentStatement)node).loc.getType().equals(((AssignmentStatement)node).assignExpr.getType()))){
+                throw new IllegalStateException ("Bad assignment."); 
+            }
+            if ((((AssignmentStatement)node).op.type == Op.Type.minusequals) || (((AssignmentStatement)node).op.type == Op.Type.plusequals)){
+                if (!(((AssignmentStatement)node).loc.getType().equals("int"))){
+                    throw new IllegalStateException ("Bad assignment."); 
+                }
+                if (!(((AssignmentStatement)node).assignExpr.getType().equals("int"))){
+                    throw new IllegalStateException ("Bad assignment."); 
+                }
+            }
+            if ((((AssignmentStatement)node).op.type == Op.Type.increment) || (((AssignmentStatement)node).op.type == Op.Type.decrement)){
+                if (!(((AssignmentStatement)node).loc.getType().equals("int"))){
+                    throw new IllegalStateException ("Bad assignment."); 
+                }
+            }
+        }
+        List <IR.Node> children = node.getChildren(); 
+        if (children == null) return; 
+
+        for (int child=0; child<children.size(); child++){
+            check18 (children.get(child)); 
         }
     }
 }
