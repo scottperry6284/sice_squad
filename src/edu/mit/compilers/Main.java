@@ -8,6 +8,7 @@ import edu.mit.compilers.semantics.ParseTree;
 import edu.mit.compilers.tools.CLI;
 import edu.mit.compilers.tools.CLI.Action;
 import edu.mit.compilers.semantics.Semantics; 
+import edu.mit.compilers.semantics.ScottSemantics; 
 
 class Main {
   public static void main(String[] args) {
@@ -89,13 +90,14 @@ token.getType() != DecafParserTokenTypes.EOF;
 	    	  irbuilder.build();
 	    	  irbuilder.postprocess();
 	    	  irbuilder.root.print();
+          ScottSemantics.RootCheck(irbuilder.root); 
           Semantics.check4 (irbuilder.root); 
           Semantics.check20 (irbuilder.root);
           Semantics.check8 (irbuilder.root);
           if (!Semantics.check3(irbuilder.root)){
             throw new IllegalStateException ("Bad main function."); 
           } 
-          Semantics.test (irbuilder.root); 
+          Semantics.check6 (irbuilder.root); 
 	      }
 	      catch(Exception e) {
 	    	  e.printStackTrace();

@@ -544,7 +544,11 @@ public class IR {
 				return ((LocationNoArray)child1).getType(); 
 			}
 			if (child1 instanceof MethodCall){
-				return this.methodTable.MethodTableEntries.get(((MethodCall)child1).ID).type.getName(); 
+				String ans = this.methodTable.MethodTableEntries.get(((MethodCall)child1).ID).type.getName(); 
+				if (ans.equals("void")){
+					throw new IllegalStateException ("Bad method call in expression."); 
+				}
+				return ans; 
 			}
 			if (child1 instanceof IntLiteral){
 				return "int"; 
