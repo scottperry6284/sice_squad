@@ -22,6 +22,23 @@ public class IR {
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;
 	}
+	public static class IRTraverser {
+		private Queue<IR.Node> nodes;
+		public IRTraverser(IR ir) {
+			nodes = new ArrayDeque<>();
+			nodes.add(ir.root);
+		}
+		public boolean hasNext() {
+			return !nodes.isEmpty();
+		}
+		public IR.Node getNext() {
+			IR.Node _node = nodes.poll();
+			if(_node.getChildren() != null)
+				for(IR.Node child: _node.getChildren())
+					nodes.add(child);
+			return _node;
+		}
+	}
 	public abstract static class Node {
 		public Node parent;
 		protected Node(Node parent) {
@@ -137,7 +154,7 @@ public class IR {
 			return name;
 		}
 	}
-	public static class FieldDecl extends IR.Node {
+	public abstract static class FieldDecl extends IR.Node {
 		public IRType type;
 		public String ID;
 		protected FieldDecl(IR.Node parent, IRType type, String ID) {
@@ -467,6 +484,10 @@ public class IR {
 			members = new ArrayList<>();
 			members.add(new IntLiteral(this, val));
 		}
+		public Expr(IR.Node parent, List<Node> members) {
+			super(parent);
+			this.members = members;
+		}
 		public Expr(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_expr);
@@ -486,7 +507,8 @@ public class IR {
 				else if(child.type == ParseTree.Node.Type.AST_bool_literal)
 					members.add(new BoolLiteral(this, child));
 				else if(child.type == ParseTree.Node.Type.AST_int_literal) { //semantic check due to signs
-					if(!members.isEmpty() && (members.get(members.size()-1) instanceof Op) &&
+					if(!members.isEmpty() && (members.size()==1 || members.get(members.size()-2) instanceof Op) &&
+						(members.get(members.size()-1) instanceof Op) &&
 						((Op)members.get(members.size()-1)).type == Op.Type.minus) {
 							members.remove(members.size()-1);
 							child.child(0).text = "-" + child.child(0).text;
@@ -518,6 +540,9 @@ public class IR {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_len);
 			ID = node.child(2).text;
+		}
+		public String getText() {
+			return ID;
 		}
 	}
 	public static class Op extends Node {
@@ -686,14 +711,35 @@ public class IR {
 	public void build() {
 		root = new Program(parseTree.root);
 	}
+	private final Op.Type[] exprPrecedence = new Op.Type[] {Op.Type.oror, Op.Type.andand, Op.Type.neq, Op.Type.eq, Op.Type.less,
+			Op.Type.leq, Op.Type.greater, Op.Type.geq, Op.Type.plus, Op.Type.minus, Op.Type.mult,
+			Op.Type.div, Op.Type.mod, Op.Type.not}; //Op.Type.minus is alraedy manually handled
+	private void parseExpr(Expr expr) {
+		for(Op.Type cur: exprPrecedence) {
+			for(int i=0; i<expr.members.size(); i++) {
+				Node _node = expr.members.get(i);
+				if(_node instanceof Op) {
+					Op op = (Op)_node;
+					if(op.type == cur) {
+						List<Node> newMembers = new ArrayList<>();
+						Expr e1 = new Expr(expr, expr.members.subList(0, i));
+						Expr e2 = new Expr(expr, expr.members.subList(i+1, expr.members.size()));
+						parseExpr(e1);
+						parseExpr(e2);
+						newMembers.add(e1);
+						newMembers.add(new Op(expr, op.type));
+						newMembers.add(e2);
+						expr.members = newMembers;
+						return;
+					}
+				}
+			}
+		}
+	}
 	public void postprocess() {
-		Queue<IR.Node> nodes = new ArrayDeque<>();
-		nodes.add(root);
-		while(!nodes.isEmpty()) {
-			IR.Node _node = nodes.poll();
-			if(_node.getChildren() != null)
-				for(IR.Node child: _node.getChildren())
-					nodes.add(child);
+		IRTraverser irTraverser = new IRTraverser(this);
+		while(irTraverser.hasNext()) {
+			IR.Node _node = irTraverser.getNext();
 			//convert all For statements to While statements
 			if(_node instanceof Block) {
 				Block block = (Block)_node;
@@ -714,6 +760,10 @@ public class IR {
 						i++;
 					}
 				}
+			}
+			if(_node instanceof Expr) {
+				Expr expr = (Expr)_node;
+				parseExpr(expr);
 			}
 		}
 	}
