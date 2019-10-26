@@ -195,14 +195,11 @@ public class IR {
 			return type.getName() + " " + ID + "[" + length + "]";
 		}
 	}
-	public static class MethodDecl extends IR.Node {
+	public class MethodDecl extends IR.Node {
 		public IRType type;
 		public String ID;
 		public List<MethodDeclParam> params;
 		public Block block;
-		public MethodDecl() {
-			super(null);
-		}
 		public MethodDecl(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_method_decl);
@@ -236,12 +233,12 @@ public class IR {
 			return children;
 		}
 	}
-	public static class MethodDeclParam extends FieldDeclNoArray {
+	public class MethodDeclParam extends FieldDeclNoArray {
 		public MethodDeclParam(IR.Node parent, IRType type, String ID) {
 			super(parent, type, ID);
 		}
 	}
-	public static class Block extends IR.Node {
+	public class Block extends IR.Node {
 		public List<FieldDecl> fields;
 		public List<Statement> statements;
 		public Block(IR.Node parent, ParseTree.Node node) {
@@ -287,9 +284,9 @@ public class IR {
 			super(parent);
 		}
 	}
-	public static class AssignmentStatement extends Statement {
+	public class AssignmentStatement extends Statement {
 		public Location loc;
-		public Op op; //possible ops: plusequal, minusequal, assignment, increment, decrement
+		public Op op; //three possible ops: plusequal, minusequal, assignment
 		public Expr assignExpr;
 		public AssignmentStatement(IR.Node parent) {
 			super(parent);
@@ -320,12 +317,12 @@ public class IR {
 			node = node.child(1);
 			//increment/decrement are treated as (+/-)=1
 			if(node.child(0).type == ParseTree.Node.Type.INCREMENT) {
-				op = new Op(this, Op.Type.increment);
-				assignExpr = null;
+				op = new Op(this, Op.Type.plusequals);
+				assignExpr = new Expr(this, 1);
 			}
 			else if(node.child(0).type == ParseTree.Node.Type.DECREMENT) {
-				op = new Op(this, Op.Type.decrement);
-				assignExpr = null;
+				op = new Op(this, Op.Type.minusequals);
+				assignExpr = new Expr(this, 1);
 			}
 			else {
 				op = new Op(this, node.child(0));
@@ -341,7 +338,7 @@ public class IR {
 			return children;
 		}
 	}
-	public static class IfStatement extends Statement {
+	public class IfStatement extends Statement {
 		public Expr condition;
 		public Block block;
 		public Block elseBlock;
@@ -362,7 +359,7 @@ public class IR {
 			return children;
 		}
 	}
-	public static class ForStatement extends Statement {
+	public class ForStatement extends Statement {
 		public LocationNoArray initLoc;
 		public Expr initExpr;
 		public Expr condition;
@@ -389,7 +386,7 @@ public class IR {
 			return children;
 		}
 	}
-	public static class WhileStatement extends Statement {
+	public class WhileStatement extends Statement {
 		public Expr condition;
 		public Block block;
 		public WhileStatement(IR.Node parent) {
@@ -408,7 +405,7 @@ public class IR {
 			return children;
 		}
 	}
-	public static class ReturnStatement extends Statement {
+	public class ReturnStatement extends Statement {
 		public Expr expr;
 		public ReturnStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
@@ -425,13 +422,13 @@ public class IR {
 			return children;
 		}
 	}
-	public static class BreakStatement extends Statement {
+	public class BreakStatement extends Statement {
 		public BreakStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_statement_break);
 		}
 	}
-	public static class ContinueStatement extends Statement {
+	public class ContinueStatement extends Statement {
 		public ContinueStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_statement_continue);
@@ -570,7 +567,13 @@ public class IR {
 			}
 			if (child1 instanceof Op){
 				if (((Op)child1).type == Op.Type.minus) return "int"; 
-				if (((Op)child1).type == Op.Type.not) return "bool"; 
+				if (((Op)child1).type == Op.Type.not) {
+					Expr child2 = (Expr)members.get(1); 
+					if (child2.getType() != "bool"){
+						throw new IllegalStateException ("Bad not expression."); 
+					}
+					return "bool"; 
+				}
 			}
 			if (child1 instanceof Expr){
 				if (members.size() == 1) return ((Expr)child1).getType(); 
@@ -687,6 +690,9 @@ public class IR {
 			if(node.type == ParseTree.Node.Type.AST_location_array)
 				return new LocationArray(parent, node);
 			else return new LocationNoArray(parent, node);
+		}
+		public String getType(){
+			return "void"; 
 		}
 	}
 	public static class LocationArray extends Location {
