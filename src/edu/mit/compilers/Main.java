@@ -95,6 +95,7 @@ token.getType() != DecafParserTokenTypes.EOF;
           if (!Semantics.check3(irbuilder.root)){
             throw new IllegalStateException ("Bad main function."); 
           } 
+          Semantics.test (irbuilder.root); 
 	      }
 	      catch(Exception e) {
 	    	  e.printStackTrace();

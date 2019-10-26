@@ -86,5 +86,17 @@ public class Semantics{
         }
         return ans; 
     }
+    public static void test (IR.Node node){
+        if (node == null) return; 
+        if (node instanceof Expr){
+            System.out.println(((Expr)node).getType()); 
+        }
+        
+        List <IR.Node> children = node.getChildren(); 
+        if (children == null) return; 
 
+        for (int child=0; child<children.size(); child++){
+            test (children.get(child)); 
+        }
+    }
 }
