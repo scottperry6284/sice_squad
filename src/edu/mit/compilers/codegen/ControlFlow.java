@@ -9,16 +9,20 @@ import edu.mit.compilers.semantics.IR;
 
 public class ControlFlow {
 	public IR ir;
-	public Node root;
+	public Program program;
+	private final long wordSize = 8; //TODO: bools and ints are currently the same size
+	private int tempExprCnt;
 	public ControlFlow(IR ir) {
 		this.ir = ir;
 	}
 	public class VarSym {
 		public IR.IRType type;
 		long len; //0 = not array
-		public VarSym(IR.IRType type, long len) {
+		public long stackOffset;
+		public VarSym(IR.IRType type, long len, long stackOffset) {
 			this.type = type;
 			this.len = len;
+			this.stackOffset = stackOffset;
 		}
 		public boolean isArray() {
 			return len != 0;
@@ -26,8 +30,8 @@ public class ControlFlow {
 	}
 	public class MethodSym {
 		public IR.IRType type;
-		public Node code;
-		public MethodSym(IR.IRType type, Node code) {
+		public CFStatement code;
+		public MethodSym(IR.IRType type, CFStatement code) {
 			this.type = type;
 			this.code = code;
 		}
@@ -35,65 +39,39 @@ public class ControlFlow {
 	public class ImportMethodSym {}
 	public Map<String, MethodSym> methods;
 	public Map<String, ImportMethodSym> importMethods;
-	public class Node {
-		public Node parent;
-		CFStatement statement;
-		public Map<String, VarSym> variables;
-		public Node(ControlFlow.Node parent) {
-			this.parent = parent;
-			variables = new HashMap<>();
-			statement = null;
-		}
-	}
-	public class Program extends Node {
+	public class Program extends CFPushScope {
 		public Program(IR.Node _node) {
-			super(null);
 			IR.Program node = (IR.Program)_node;
-			for(IR.ImportDecl i: node.imports) {
-				if(i instanceof IR.ImportDecl) {
+			for(IR.ImportDecl i: node.imports)
+				if(i instanceof IR.ImportDecl)
 					importMethods.put(i.name, new ImportMethodSym());
-				}
-			}
-			for(IR.FieldDecl i: node.fields) {
-				if(i instanceof IR.FieldDeclArray) {
-					IR.FieldDeclArray x = (IR.FieldDeclArray)i;
-					variables.put(x.ID, new VarSym(x.type, x.length));
-				}
-				else variables.put(i.ID, new VarSym(i.type, 0));
-			}
-			for(IR.MethodDecl i: node.methods) {
-				Node code = new Method(this, i);
-				methods.put(i.ID, new MethodSym(i.type, code));
-			}
+			super.addFields(node.fields);
+			for(IR.MethodDecl i: node.methods)
+				methods.put(i.ID, new MethodSym(i.type, new Method(i)));
 		}
 	}
-	public class Method extends Node {
-		public Method(ControlFlow.Node parent, IR.Node _node) {
-			super(parent);
+	public class Method extends CFPushScope {
+		public Method(IR.Node _node) {
 			IR.MethodDecl node = (IR.MethodDecl)_node;
-			for(IR.FieldDecl i: node.block.fields) {
-				if(i instanceof IR.FieldDeclArray) {
-					IR.FieldDeclArray x = (IR.FieldDeclArray)i;
-					variables.put(x.ID, new VarSym(x.type, x.length));
-				}
-				else variables.put(i.ID, new VarSym(i.type, 0));
-			}
 			for(IR.MethodDeclParam i: node.params) {
-				variables.put(i.ID, new VarSym(i.type, 0));
+				variables.put(i.ID, new VarSym(i.type, 0, stackOffset));
+				stackOffset += wordSize;
 			}
-			statement = makeBlock(node.block, new CFNop());
+			next = makeBlock(node.block, new CFEndMethod());
 		}
 	}
 	public CFStatement makeBlock(IR.Block block, CFStatement endBlock) {
-		CFStatement cur = new CFNop();
-		CFStatement start = cur;
+		CFPushScope pushScope = new CFPushScope();
+		CFStatement start = pushScope;
+		pushScope.addFields(block.fields);
+		CFStatement cur = pushScope;
 		for(IR.Statement i: block.statements) {
 			if(i instanceof IR.AssignmentStatement) {
 				cur = new CFAssignment((IR.AssignmentStatement)i);
 				cur = cur.next;
 			}
 			else if(i instanceof IR.IfStatement) {
-				CFNop end = new CFNop();
+				CFNop end = new CFMergeBranch();
 				IR.IfStatement ifS = (IR.IfStatement)i;
 				if(ifS.elseBlock == null)
 					cur.next = shortCircuit(ifS.condition, makeBlock(ifS.block, end), end);
@@ -103,27 +81,31 @@ public class ControlFlow {
 			else if(i instanceof IR.WhileStatement) {
 				cur.next = new CFNop();
 				cur = cur.next;
-				CFNop end = new CFNop();
+				CFNop end = new CFMergeBranch();
 				IR.WhileStatement wS = (IR.WhileStatement)i;
 				CFBranch whileBranch = shortCircuit(wS.condition, makeBlock(wS.block, cur), end);
 				cur.next = whileBranch;
 				cur = end;
 			}
 			else if(i instanceof IR.BreakStatement) {
-				break;
+				break; //exit the current scope
 			}
 			else if(i instanceof IR.ContinueStatement) {
 				cur.next = start; //TODO: I think this works
 			}
 			else if(i instanceof IR.ReturnStatement) {
-				
+				cur.next = new CFReturn((IR.ReturnStatement)i);
+				cur = cur.next;
+				break;
 			}
 			else if(i instanceof IR.MethodCall) {
-				
+				cur.next = new CFMethodCall((IR.MethodCall)i);
+				cur = cur.next;
 			}
 			else throw new IllegalStateException("Bad statement class " + i.getClass().getCanonicalName());
 		}
-		cur.next = endBlock;
+		cur.next = new CFPopScope();
+		cur.next.next = endBlock;
 		return start;
 	}
 	public CFBranch shortCircuit(IR.Expr condition, CFStatement ifTrue, CFStatement ifFalse) {
@@ -170,9 +152,46 @@ public class ControlFlow {
 	public class CFNop extends CFStatement {
 		
 	}
+	public class CFMergeBranch extends CFNop {
+		
+	}
+	public class CFPushScope extends CFStatement {
+		public CFPushScope parent;
+		public Map<String, VarSym> variables;
+		long stackOffset;
+		public CFPushScope() {
+			variables = new HashMap<>();
+			stackOffset = 0;
+		}
+		//note that stackOffset isn't actually used for global variables
+		public void addFields(List<IR.FieldDecl> fields) {
+			for(IR.FieldDecl i: fields) {
+				if(i instanceof IR.FieldDeclArray) {
+					IR.FieldDeclArray x = (IR.FieldDeclArray)i;
+					variables.put(x.ID, new VarSym(x.type, x.length, stackOffset));
+					stackOffset += wordSize * x.length;
+				}
+				else {
+					variables.put(i.ID, new VarSym(i.type, 0, stackOffset));
+					stackOffset += wordSize;
+				}
+			}
+		}
+	}
+	public class CFPopScope extends CFStatement {
+		
+	}
+	public class CFEndMethod extends CFPopScope {
+		
+	}
 	public class CFAssignment extends CFStatement {
+		public IR.Location loc;
+		public IR.Op op;
+		public IR.Expr expr;
 		public CFAssignment(IR.AssignmentStatement node) {
-			
+			loc = node.loc;
+			op = node.op;
+			expr = node.assignExpr;
 		}
 	}
 	public class CFBranch extends CFStatement {
@@ -180,9 +199,26 @@ public class ControlFlow {
 			this.condition = condition;
 		}
 	}
+	public class CFReturn extends CFStatement {
+		public IR.Expr expr;
+		public CFReturn(IR.ReturnStatement node) {
+			this.expr = node.expr;
+		}
+	}
+	public class CFMethodCall extends CFStatement {
+		public String ID;
+		public List<Object> params;
+		public CFMethodCall(IR.MethodCall call) {
+			this.ID = call.ID;
+			this.params = new ArrayList<>();
+			for(IR.MethodParam i: call.params)
+				this.params.add(i);
+		}
+	}
 	public void build() {
 		methods = new HashMap<>();
 		importMethods = new HashMap<>();
-		root = new Program(ir.root);
+		tempExprCnt = 0;
+		program = new Program(ir.root);
 	}
 }

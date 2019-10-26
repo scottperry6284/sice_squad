@@ -200,6 +200,7 @@ public class IR {
 		public String ID;
 		public List<MethodDeclParam> params;
 		public Block block;
+		public MethodDecl() {}
 		public MethodDecl(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_method_decl);
