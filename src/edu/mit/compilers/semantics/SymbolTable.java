@@ -15,10 +15,10 @@ public class SymbolTable {
 
 	public int level;
 	public SymbolTable parent = null;
-	public HashMap<String, IR> SymbolTableEntries = new HashMap<String, IR>();
+	public HashMap<String, IR.Node> SymbolTableEntries = new HashMap<String, IR.Node>();
 	public ArrayList<SymbolTable> childNodes = new ArrayList<SymbolTable>() ;
 
-	public Boolean add (String ID, IR node){
+	public Boolean add (String ID, IR.Node node){
 		if (SymbolTableEntries.containsKey(ID)){
 			return false;
 		} else {
@@ -27,7 +27,7 @@ public class SymbolTable {
 		}
 	}
 
-	public IR find (String ID) {
+	public IR.Node find (String ID) {
 		if(SymbolTableEntries.containsKey(ID)) {
 			return SymbolTableEntries.get(ID);
 		}

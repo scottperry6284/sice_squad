@@ -14,16 +14,27 @@ import java.util.List;
 public class MethodSymbolTable {
 
     public int level;
-    public HashMap<String, MethodDecl > MethodTableEntries = new HashMap<String, MethodDecl >();
+    public HashMap<String, MethodDecl> MethodTableEntries = new HashMap<String, MethodDecl>();
+    public HashMap<String, ImportDecl> ImportTableEntries = new HashMap<String, ImportDecl>();
 
-    // Can handle both methods and imports because if the global scope.
-    public boolean add(MethodDecl method){
+    public boolean addMethod(MethodDecl method){
 
         if (MethodTableEntries.containsKey(method.ID)) {
             return false;
         }
         else {
             MethodTableEntries.put(method.ID, method);
+            return true;
+        }
+    }
+
+    public boolean addImport(ImportDecl importStatement){
+
+        if (ImportTableEntries.containsKey(importStatement.name)) {
+            return false;
+        }
+        else {
+            ImportTableEntries.put(importStatement.name, importStatement);
             return true;
         }
     }
