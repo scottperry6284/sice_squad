@@ -544,7 +544,10 @@ public class IR {
 				return ((LocationNoArray)child1).getType(); 
 			}
 			if (child1 instanceof MethodCall){
+				System.out.println("ID: " + ((MethodCall)child1).ID); 
 				String ans = this.methodTable.MethodTableEntries.get(((MethodCall)child1).ID).type.getName(); 
+				
+				
 				if (ans.equals("void")){
 					throw new IllegalStateException ("Bad method call in expression."); 
 				}
