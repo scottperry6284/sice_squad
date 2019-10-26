@@ -88,7 +88,17 @@ public class ControlFlow {
 				cur = end;
 			}
 			else if(i instanceof IR.ForStatement) {
-				
+				IR.ForStatement fS = (IR.ForStatement)i;
+				cur.next = new CFAssignment(fS.initLoc, fS.initExpr);
+				cur = cur.next;
+				cur.next = new CFNop();
+				cur = cur.next;
+				CFMergeBranch end = new CFMergeBranch();
+				CFAssignment iteration = new CFAssignment(fS.iteration);
+				iteration.next = end;
+				CFBranch forBranch = shortCircuit(fS.condition, makeBlock(fS.block, iteration), end);
+				cur.next = forBranch;
+				cur = end;
 			}
 			else if(i instanceof IR.BreakStatement) {
 				break; //exit the current scope
@@ -195,6 +205,11 @@ public class ControlFlow {
 			loc = node.loc;
 			op = node.op;
 			expr = node.assignExpr;
+		}
+		public CFAssignment(IR.Location loc, IR.Expr expr) {
+			this.loc = loc;
+			this.op = new IR.Op(null, IR.Op.Type.assign); //TODO: this has a null parent. is null parent ok? probably
+			this.expr = expr;
 		}
 	}
 	public class CFBranch extends CFStatement {
