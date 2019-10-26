@@ -13,12 +13,6 @@ public class IR {
 	private ParseTree parseTree;
 	public IR.Node root;
 	
-	// Add Symbol table
-	public SymbolTable symbolTable;
-
-	// Add Method table
-	public MethodSymbolTable methodTable;
-	
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;
 	}
@@ -41,6 +35,11 @@ public class IR {
 	}
 	public abstract static class Node {
 		public Node parent;
+		// Add Symbol table
+		public SymbolTable symbolTable;
+
+		// Add Method table
+		public MethodSymbolTable methodTable;
 		protected Node(Node parent) {
 			this.parent = parent;
 		}
