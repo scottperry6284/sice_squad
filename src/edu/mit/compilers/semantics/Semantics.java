@@ -77,7 +77,6 @@ public class Semantics{
                 }
             }
         }
-        System.out.println(ans);
         
         List <IR.Node> children = node.getChildren(); 
         if (children == null) return ans; 

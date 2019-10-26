@@ -295,12 +295,12 @@ public class IR {
 			super(parent);
 			loc = Location.create(this, node_loc);
 			if(node_incdec.type == ParseTree.Node.Type.INCREMENT) {
-				op = new Op(this, Op.Type.plusequals);
-				assignExpr = new Expr(this, 1);
+				op = new Op(this, Op.Type.increment);
+				assignExpr = null;
 			}
 			else if(node_incdec.type == ParseTree.Node.Type.DECREMENT) {
-				op = new Op(this, Op.Type.minusequals);
-				assignExpr = new Expr(this, 1);
+				op = new Op(this, Op.Type.decrement);
+				assignExpr = null;
 			}
 			else Utils.logError(new IllegalStateException("Expected increment/decrement, but got type " + node_incdec.type));
 		}
@@ -333,7 +333,8 @@ public class IR {
 			List<IR.Node> children = new ArrayList<>();
 			children.add(loc);
 			children.add(op);
-			children.add(assignExpr);
+			if(assignExpr != null)
+				children.add(assignExpr);
 			return children;
 		}
 	}
@@ -547,7 +548,7 @@ public class IR {
 	public static class Op extends Node {
 		public enum Type {
 			plus, minus, mult, div, mod, less, greater, leq, geq, eq, neq, andand, oror, not,
-			plusequals, minusequals, assign;
+			plusequals, minusequals, assign, increment, decrement;
 		}
 		public Type type;
 		public Op(IR.Node parent, Type type) {
