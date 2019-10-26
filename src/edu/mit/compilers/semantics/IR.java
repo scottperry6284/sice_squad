@@ -195,7 +195,7 @@ public class IR {
 			return type.getName() + " " + ID + "[" + length + "]";
 		}
 	}
-	public class MethodDecl extends IR.Node {
+	public static class MethodDecl extends IR.Node {
 		public IRType type;
 		public String ID;
 		public List<MethodDeclParam> params;
@@ -236,12 +236,12 @@ public class IR {
 			return children;
 		}
 	}
-	public class MethodDeclParam extends FieldDeclNoArray {
+	public static class MethodDeclParam extends FieldDeclNoArray {
 		public MethodDeclParam(IR.Node parent, IRType type, String ID) {
 			super(parent, type, ID);
 		}
 	}
-	public class Block extends IR.Node {
+	public static class Block extends IR.Node {
 		public List<FieldDecl> fields;
 		public List<Statement> statements;
 		public Block(IR.Node parent, ParseTree.Node node) {
@@ -287,9 +287,9 @@ public class IR {
 			super(parent);
 		}
 	}
-	public class AssignmentStatement extends Statement {
+	public static class AssignmentStatement extends Statement {
 		public Location loc;
-		public Op op; //three possible ops: plusequal, minusequal, assignment
+		public Op op; //possible ops: plusequal, minusequal, assignment, increment, decrement
 		public Expr assignExpr;
 		public AssignmentStatement(IR.Node parent) {
 			super(parent);
@@ -320,12 +320,12 @@ public class IR {
 			node = node.child(1);
 			//increment/decrement are treated as (+/-)=1
 			if(node.child(0).type == ParseTree.Node.Type.INCREMENT) {
-				op = new Op(this, Op.Type.plusequals);
-				assignExpr = new Expr(this, 1);
+				op = new Op(this, Op.Type.increment);
+				assignExpr = null;
 			}
 			else if(node.child(0).type == ParseTree.Node.Type.DECREMENT) {
-				op = new Op(this, Op.Type.minusequals);
-				assignExpr = new Expr(this, 1);
+				op = new Op(this, Op.Type.decrement);
+				assignExpr = null;
 			}
 			else {
 				op = new Op(this, node.child(0));
@@ -341,7 +341,7 @@ public class IR {
 			return children;
 		}
 	}
-	public class IfStatement extends Statement {
+	public static class IfStatement extends Statement {
 		public Expr condition;
 		public Block block;
 		public Block elseBlock;
@@ -362,7 +362,7 @@ public class IR {
 			return children;
 		}
 	}
-	public class ForStatement extends Statement {
+	public static class ForStatement extends Statement {
 		public LocationNoArray initLoc;
 		public Expr initExpr;
 		public Expr condition;
@@ -389,7 +389,7 @@ public class IR {
 			return children;
 		}
 	}
-	public class WhileStatement extends Statement {
+	public static class WhileStatement extends Statement {
 		public Expr condition;
 		public Block block;
 		public WhileStatement(IR.Node parent) {
@@ -408,7 +408,7 @@ public class IR {
 			return children;
 		}
 	}
-	public class ReturnStatement extends Statement {
+	public static class ReturnStatement extends Statement {
 		public Expr expr;
 		public ReturnStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
@@ -425,13 +425,13 @@ public class IR {
 			return children;
 		}
 	}
-	public class BreakStatement extends Statement {
+	public static class BreakStatement extends Statement {
 		public BreakStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_statement_break);
 		}
 	}
-	public class ContinueStatement extends Statement {
+	public static class ContinueStatement extends Statement {
 		public ContinueStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_statement_continue);

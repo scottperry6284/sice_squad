@@ -71,7 +71,7 @@ public class ControlFlow {
 				cur = cur.next;
 			}
 			else if(i instanceof IR.IfStatement) {
-				CFNop end = new CFMergeBranch();
+				CFMergeBranch end = new CFMergeBranch();
 				IR.IfStatement ifS = (IR.IfStatement)i;
 				if(ifS.elseBlock == null)
 					cur.next = shortCircuit(ifS.condition, makeBlock(ifS.block, end), end);
@@ -81,11 +81,14 @@ public class ControlFlow {
 			else if(i instanceof IR.WhileStatement) {
 				cur.next = new CFNop();
 				cur = cur.next;
-				CFNop end = new CFMergeBranch();
+				CFMergeBranch end = new CFMergeBranch();
 				IR.WhileStatement wS = (IR.WhileStatement)i;
 				CFBranch whileBranch = shortCircuit(wS.condition, makeBlock(wS.block, cur), end);
 				cur.next = whileBranch;
 				cur = end;
+			}
+			else if(i instanceof IR.ForStatement) {
+				
 			}
 			else if(i instanceof IR.BreakStatement) {
 				break; //exit the current scope

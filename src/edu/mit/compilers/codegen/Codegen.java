@@ -71,7 +71,7 @@ public class Codegen {
 		for(int i=scopes.size()-1; i>=0; i--) {
 			if(scopes.get(i).variables.containsKey(name))
 				return (stackOffset + scopes.get(i).variables.get(name).stackOffset) + "(%rsp)";
-			stackOffset += scopes.get(i).stackOffset + 8; //+8 because we push rbp every scop
+			stackOffset += scopes.get(i).stackOffset + 8; //+8 because we push rbp every scope
 		}
 		//it's in the global scope
 		if(!CF.program.variables.containsKey(name))
@@ -134,10 +134,13 @@ public class Codegen {
 					}
 					else if(CFS.expr.members.size() == 2) {
 						IR.Node mem1 = CFS.expr.members.get(1);
-						 
+						if(!(mem1 instanceof IR.Location))
+							throw new IllegalStateException("Expected IR.Location, got " + mem1.getClass().getCanonicalName());
 						if(mem0 instanceof IR.Op) {
 							if(((IR.Op)mem0).type == IR.Op.Type.not) {
-								asmOutput.add(new Asm(Asm.Op.xor, "$1", mem1.getText()));
+								if(mem1 instanceof IR.LocationNoArray)
+									asmOutput.add(new Asm(Asm.Op.xor, "$1", getVarLoc(((IR.LocationNoArray)mem1).ID)));
+								else {} //TODO: handle arrays
 							}
 							else throw new IllegalStateException("Unexpected op type: " + ((IR.Op)mem0).type.name());
 						}
@@ -145,6 +148,8 @@ public class Codegen {
 					}
 					else if(CFS.expr.members.size() == 3) {
 						IR.Node mem1 = CFS.expr.members.get(1);
+						if(!(mem1 instanceof IR.Op))
+							throw new IllegalStateException("Expected IR.Op, got " + mem1.getClass().getCanonicalName());
 						
 					}
 					else throw new IllegalStateException("Bad expr size: " + CFS.expr.members.size());
