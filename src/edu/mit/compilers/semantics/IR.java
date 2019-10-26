@@ -341,21 +341,21 @@ public class IR {
 	public class IfStatement extends Statement {
 		public Expr condition;
 		public Block block;
-		public List<Block> elseBlock; //can there be multiple else blocks?
+		public Block elseBlock;
 		public IfStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent);
 			expectType(node, ParseTree.Node.Type.AST_statement_if);
 			condition = new Expr(this, node.child(2));
 			block = new Block(this, node.child(4));
-			elseBlock = new ArrayList<>();
-			for(int i=6; i<node.children.size(); i+=2)
-				elseBlock.add(new Block(this, node.child(i)));
+			if(node.children.size() > 6)
+				elseBlock = new Block(this, node.child(6));
 		}
 		public List<IR.Node> getChildren() {
 			List<IR.Node> children = new ArrayList<>();
 			children.add(condition);
 			children.add(block);
-			children.addAll(elseBlock);
+			if(elseBlock != null)
+				children.add(elseBlock);
 			return children;
 		}
 	}
