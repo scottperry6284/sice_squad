@@ -533,6 +533,49 @@ public class IR {
 			children.addAll(members);
 			return children;
 		}
+		public String getType (){
+			// NOTE: DO NOT CALL THIS FUNCTION UNTIL AFTER THE IR IS FINISHED BUILDING
+
+			IR.Node child1 = members.get(0); 
+			if (child1 instanceof LocationArray){
+				return ((LocationArray)child1).getType(); 
+			}
+			if (child1 instanceof LocationNoArray){
+				return ((LocationNoArray)child1).getType(); 
+			}
+			if (child1 instanceof MethodCall){
+				return this.methodTable.MethodTableEntries.get(((MethodCall)child1).ID).type.getName(); 
+			}
+			if (child1 instanceof IntLiteral){
+				return "int"; 
+			}
+			if (child1 instanceof BoolLiteral){
+				return "bool";
+			}
+			if (child1 instanceof CharLiteral){
+				return "char"; 
+			}
+			if (child1 instanceof Len){
+				return "int"; 
+			}
+			if (child1 instanceof Op){
+				if (((Op)child1).type == Op.Type.minus) return "int"; 
+				if (((Op)child1).type == Op.Type.not) return "bool"; 
+			}
+			if (child1 instanceof Expr){
+				if (members.size() == 1) return ((Expr)child1).getType(); 
+				else{
+					IR.Node child2 = members.get(1); 
+					if (child2 instanceof Op){
+						if (((Op)child2).type == Op.Type.plus || ((Op)child2).type == Op.Type.minus || ((Op)child2).type == Op.Type.mult || ((Op)child2).type == Op.Type.div || ((Op)child2).type == Op.Type.mod){
+							return "int"; 
+						}
+						return "bool";
+					}
+				}
+			}
+			return "none"; 
+		}
 	}
 	public static class Len extends Node {
 		public String ID;
@@ -652,6 +695,9 @@ public class IR {
 			children.add(index);
 			return children;
 		}
+		public String getType(){
+			return ((FieldDeclArray)(this.symbolTable.find(this.ID))).type.getName(); 
+		}
 	}
 	public static class LocationNoArray extends Location {
 		public LocationNoArray(IR.Node parent, ParseTree.Node node) {
@@ -665,6 +711,9 @@ public class IR {
 		}
 		public String getText() {
 			return ID;
+		}
+		public String getType(){
+			return ((FieldDecl)(this.symbolTable.find(this.ID))).type.getName(); 
 		}
 	}
 	public static class BoolLiteral extends IR.Node {
