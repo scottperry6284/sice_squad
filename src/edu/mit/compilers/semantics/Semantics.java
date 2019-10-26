@@ -48,7 +48,7 @@ public class Semantics{
                     IR.Node par = node.parent; 
                     boolean good = false; 
                     while (par != null){
-                        if ((par instanceof MethodDecl) && ((MethodDecl)par).type.getName() != "void"){
+                        if ((par instanceof MethodDecl) && !(((MethodDecl)par).type.getName().equals("void"))){
                             good = true; 
                             break; 
                         }
@@ -67,4 +67,25 @@ public class Semantics{
             check8 (children.get(child)); 
         }
     }
+    public static boolean check3 (IR.Node node){
+        if (node == null) return false; 
+        boolean ans = false; 
+        if (node instanceof MethodDecl){
+            if ((((MethodDecl)node).type.getName().equals("void")) && ((((MethodDecl)node).ID).equals("main"))){
+                if (((MethodDecl)node).params.size() == 0){
+                    ans = true; 
+                }
+            }
+        }
+        System.out.println(ans);
+        
+        List <IR.Node> children = node.getChildren(); 
+        if (children == null) return ans; 
+
+        for (int child=0; child<children.size(); child++){
+            ans |= check3 (children.get(child)); 
+        }
+        return ans; 
+    }
+
 }
