@@ -148,24 +148,6 @@ public class Semantics{
             check12 (children.get(child)); 
         }
     }
-    public static void check13 (IR.Node node){
-        if (node == null) return; 
-        if (node instanceof LocationArray){
-            Node arr = node.symbolTable.find(((LocationArray)node).ID); 
-            if (!(arr instanceof FieldDeclArray)){
-                throw new IllegalStateException ("Bad location array."); 
-            }
-            if (((LocationArray)node).index.getType() != "int"){
-                throw new IllegalStateException ("Bad location array."); 
-            }
-        }
-        List <IR.Node> children = node.getChildren(); 
-        if (children == null) return; 
-
-        for (int child=0; child<children.size(); child++){
-            check12 (children.get(child)); 
-        }
-    }
     public static void check18 (IR.Node node){
         /* also handles check 19 */
         if (node == null) return; 
