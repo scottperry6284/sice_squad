@@ -14,10 +14,10 @@ public class IR {
 	public IR.Node root;
 	
 	// Add Symbol table
-	//public SymbolTable symbolTable;
+	public SymbolTable symbolTable;
 
 	// Add Method table
-	//public MethodSymbolTable methodTable;
+	public MethodSymbolTable methodTable;
 	
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;

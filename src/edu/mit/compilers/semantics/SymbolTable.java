@@ -1,16 +1,25 @@
-/*
+
 package edu.mit.compilers.semantics;
-import edu.mit.compilers.IR.*;
+import edu.mit.compilers.semantics.IR.*; 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Queue;
+
+import edu.mit.compilers.Utils;
+import java.util.List;
+
 
 public class SymbolTable {
 
 	public int level;
 	public SymbolTable parent = null;
 	public HashMap<String, IR> SymbolTableEntries = new HashMap<String, IR>();
-	public ArrayList<Symboltable> childNodes = new ArrayList<Symboltable>() ;
+	public ArrayList<SymbolTable> childNodes = new ArrayList<SymbolTable>() ;
 
 	public Boolean add (String ID, IR node){
-		if (SymbolTableEntries.containsKey(Id)){
+		if (SymbolTableEntries.containsKey(ID)){
 			return false;
 		} else {
 			SymbolTableEntries.put(ID, node);
@@ -19,8 +28,8 @@ public class SymbolTable {
 	}
 
 	public IR find (String ID) {
-		if(hashSymbolTable.containsKey(id)) {
-			return hashSymbolTable.get(id);
+		if(SymbolTableEntries.containsKey(ID)) {
+			return SymbolTableEntries.get(ID);
 		}
 		if(parent != null) {
 			return parent.find(ID);
@@ -29,7 +38,6 @@ public class SymbolTable {
 	}
 
 	public String prettyPrint() {
-		return "\t".repeat(level) + Integer.toString(hashSymbolTable.size());
+		return "\t".repeat(level) + Integer.toString(SymbolTableEntries.size());
 	}
 }
-*/
