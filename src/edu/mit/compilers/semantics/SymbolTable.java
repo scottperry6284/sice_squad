@@ -13,7 +13,7 @@ import java.util.List;
 
 public class SymbolTable {
 
-	public int level;
+	public int level = 0;
 	public SymbolTable parent = null;
 	public HashMap<String, IR.Node> SymbolTableEntries = new HashMap<String, IR.Node>();
 	public ArrayList<SymbolTable> childNodes = new ArrayList<SymbolTable>() ;
@@ -36,8 +36,5 @@ public class SymbolTable {
 		}
 		return null;
 	}
-
-	public String prettyPrint() {
-		return "\t".repeat(level) + Integer.toString(SymbolTableEntries.size());
-	}
+	
 }
