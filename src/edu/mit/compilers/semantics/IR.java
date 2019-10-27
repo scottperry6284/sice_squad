@@ -598,6 +598,14 @@ public class IR {
 								throw new IllegalStateException ("Bad conditional operator."); 
 							}
 						}
+						if (((Op)child2).type == Op.Type.eq || ((Op)child2).type == Op.Type.neq){
+							if (!((((Expr)child1).getType()).equals(((Expr)(members.get(2))).getType()))){
+								throw new IllegalStateException ("Bad eq operator."); 
+							}					
+							if (!((((Expr)child1).getType()).equals("int")) && !((((Expr)child1).getType()).equals("bool"))){
+								throw new IllegalStateException ("Bad eq operator."); 
+							}	
+						}
 						return "bool";
 					}
 				}
