@@ -1,12 +1,10 @@
 package edu.mit.compilers.codegen;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 
 import edu.mit.compilers.codegen.ControlFlow.CFAssignment;
@@ -79,17 +77,13 @@ public class Codegen {
 			labelCount++;
 		}
 	}
-	private String getVarLoc(String name, CFStatement CFS) {
-		CFPushScope scope;
-		if(CFS instanceof CFPushScope)
-			scope = (CFPushScope)CFS;
-		else scope = CFS.parentScope;
+	private String getVarLoc(String name, CFPushScope scope) {
 		long stackOffset = 0;
 		while(scope != null) {
 			if(scope.variables.containsKey(name))
 				return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
 			stackOffset += scope.stackOffset + 8; //+8 because we push rbp every scope
-			scope = scope.parentScope;
+			scope = scope.parent;
 		}
 		//it's in the global scope
 		if(!CF.program.variables.containsKey(name))
@@ -97,7 +91,7 @@ public class Codegen {
 		return CF.program.variables.get(name).stackOffset + "(%globalvar)";
 	}
 	private void processCFS(CFStatement CFS) {
-		for(int i=0; i<CFS.scope; i++)
+		for(int i=0; i<CFS.scope.depth; i++)
 			System.out.print("  ");
 		System.out.println(CFS.getClass().getCanonicalName());
 		addLabel(CFS);
@@ -110,17 +104,17 @@ public class Codegen {
 			}
 		}
 		else if(CFS instanceof CFEndMethod) {
-			if(CFS.parentScope.stackOffset > 0) {
+			if(CFS.scope.stackOffset > 0) {
 				asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
 				asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
-				asmOutput.add(new Asm(Asm.Op.add, "%rsp", "$" + CFS.parentScope.stackOffset));
+				asmOutput.add(new Asm(Asm.Op.add, "%rsp", "$" + CFS.scope.stackOffset));
 			}
 			asmOutput.add(new Asm(Asm.Op.ret));
 		}
 		else if(CFS instanceof CFAssignment) {
 			asmOutput.add(new Asm(Asm.Op.custom, "CFAssignment"));
 			CFAssignment CFAS = (CFAssignment)CFS;
-			String loc1 = getVarLoc(CFAS.loc.ID, CFAS.parentScope);
+			String loc1 = getVarLoc(CFAS.loc.ID, CFAS.scope);
 			if(CFAS.op.type == IR.Op.Type.increment)
 				asmOutput.add(new Asm(Asm.Op.inc, loc1));
 			else if(CFAS.op.type == IR.Op.Type.decrement)
@@ -129,7 +123,7 @@ public class Codegen {
 				IR.Node mem0 = CFAS.expr.members.get(0);
 				if(mem0 instanceof IR.Location)
 				{
-					String loc2 = getVarLoc(((IR.Location)mem0).ID, CFS.parentScope);
+					String loc2 = getVarLoc(((IR.Location)mem0).ID, CFS.scope);
 					if(CFAS.op.type == IR.Op.Type.assign)
 						asmOutput.add(new Asm(Asm.Op.movq, loc2, loc1));
 					else if(CFAS.op.type == IR.Op.Type.plusequals)
@@ -167,7 +161,7 @@ public class Codegen {
 						if(mem0 instanceof IR.Op) {
 							if(((IR.Op)mem0).type == IR.Op.Type.not) {
 								if(mem1 instanceof IR.LocationNoArray)
-									asmOutput.add(new Asm(Asm.Op.xor, "$1", getVarLoc(((IR.LocationNoArray)mem1).ID, CFS.parentScope)));
+									asmOutput.add(new Asm(Asm.Op.xor, "$1", getVarLoc(((IR.LocationNoArray)mem1).ID, CFS.scope)));
 								else {} //TODO: handle arrays
 							}
 							else throw new IllegalStateException("Unexpected op type: " + ((IR.Op)mem0).type.name());
@@ -185,6 +179,7 @@ public class Codegen {
 			}
 		}
 		else if(CFS instanceof CFMethodCall) {
+			asmOutput.add(new Asm(Asm.Op.custom, "CFMethodCall"));
 			CFMethodCall CFMC = (CFMethodCall)CFS;
 			if(CF.importMethods.containsKey(CFMC.ID)) {
 				
@@ -204,22 +199,19 @@ public class Codegen {
 
 		}
 		else if(CFS instanceof CFShortCircuit) {
-			
+			return;
 		}
 		else throw new IllegalStateException("Unexpected CFS type: " + CFS.getClass().getCanonicalName());
 		if(CFS.next != null) {
-			if(CFS.scope > CFS.next.scope) {
-				CFPushScope CFPS;
-				if(CFS instanceof CFPushScope)
-					CFPS = (CFPushScope)CFS;
-				else CFPS = CFS.parentScope;
-				while(CFPS!=null && CFPS.scope>CFS.next.scope) {
+			if(CFS.scope.depth > CFS.next.scope.depth) {
+				CFPushScope CFPS = CFS.scope;
+				while(CFPS!=null && CFPS!=CFS.next.scope) {
 					if(CFPS.stackOffset > 0) {
 						asmOutput.add(new Asm(Asm.Op.add, "%rsp", "$" + CFPS.stackOffset));
 						asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
 						asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
 					}
-					CFPS = CFPS.parentScope;
+					CFPS = CFPS.parent;
 				}
 				addLabelIfNonexistent(CFS);
 				
@@ -231,34 +223,29 @@ public class Codegen {
 		}
 	}
 	private List<CFStatement> CFOrder;
-	private void genCFOrder(CFStatement CFS, CFPushScope parentScope, CFMergeBranch scopeStop) {
-		if(CFS==null || CFS==scopeStop || CFS.orderpos!=-1)
+	private void genCFOrder(CFStatement CFS, CFMergeBranch stop) {
+		if(CFS==null || CFS==stop || CFS.orderpos!=-1)
 			return;
 		CFS.orderpos = CFOrder.size();
-		CFS.parentScope = parentScope;
 		CFOrder.add(CFS);
 		if(CFS instanceof CFShortCircuit) {
 			CFShortCircuit CFSC = (CFShortCircuit)CFS;
-			genCFOrder(CFSC.start, parentScope, (CFMergeBranch)CFSC.next);
-			genCFOrder(CFSC.next, parentScope, scopeStop);
+			genCFOrder(CFSC.start, (CFMergeBranch)CFSC.next);
+			genCFOrder(CFSC.next, stop);
 			return;
 		}
 		else if(CFS instanceof CFBranch) {
 			CFBranch CFB = (CFBranch)CFS;
-			genCFOrder(CFB.next, parentScope, scopeStop);
-			genCFOrder(CFB.next2, parentScope, scopeStop);
-		}
-		else if(CFS instanceof CFPushScope) {
-			CFPushScope CFPS = (CFPushScope)CFS;
-			genCFOrder(CFS.next, CFPS, scopeStop);
+			genCFOrder(CFB.next, stop);
+			genCFOrder(CFB.next2, stop);
 		}
 		else {
-			genCFOrder(CFS.next, parentScope, scopeStop);
+			genCFOrder(CFS.next, stop);
 		}
 	}
 	private void methodToAsm(String name, ControlFlow.MethodSym method) {
 		CFOrder = new ArrayList<>();
-		genCFOrder(method.code, null, null);
+		genCFOrder(method.code, null);
 		if(name.equals("main"))
 			asmOutput.add(new Asm(Asm.Op.custom, ".globl main"));
 		asmOutput.add(new Asm(Asm.Op.methodlabel, name));

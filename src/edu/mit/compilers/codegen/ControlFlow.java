@@ -6,13 +6,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import edu.mit.compilers.codegen.ControlFlow.CFBranch;
 import edu.mit.compilers.semantics.IR;
 
 public class ControlFlow {
 	public IR ir;
 	public Program program;
 	private final long wordSize = 8; //TODO: bools and ints are currently the same size
-	private int tempExprCnt;
 	public ControlFlow(IR ir) {
 		this.ir = ir;
 	}
@@ -31,8 +31,8 @@ public class ControlFlow {
 	}
 	public class MethodSym {
 		public IR.IRType type;
-		public Method code;
-		public MethodSym(IR.IRType type, Method code) {
+		public CFMethod code;
+		public MethodSym(IR.IRType type, CFMethod code) {
 			this.type = type;
 			this.code = code;
 		}
@@ -42,72 +42,72 @@ public class ControlFlow {
 	public Map<String, ImportMethodSym> importMethods;
 	public class Program extends CFPushScope {
 		public Program(IR.Node _node) {
-			super(0, _node.line);
+			super(null, _node.line);
 			IR.Program node = (IR.Program)_node;
 			for(IR.ImportDecl i: node.imports)
 				if(i instanceof IR.ImportDecl)
 					importMethods.put(i.name, new ImportMethodSym());
 			super.addFields(node.fields);
 			for(IR.MethodDecl i: node.methods)
-				methods.put(i.ID, new MethodSym(i.type, new Method(i)));
+				methods.put(i.ID, new MethodSym(i.type, new CFMethod(i)));
 		}
 	}
-	public class Method extends CFPushScope {
-		public Method(IR.Node _node) {
-			super(1, _node.line);
+	public class CFMethod extends CFPushScope {
+		public CFMethod(IR.Node _node) {
+			super(null, _node.line);
 			IR.MethodDecl node = (IR.MethodDecl)_node;
 			for(IR.MethodDeclParam i: node.params) {
 				variables.put(i.ID, new VarSym(i.type, 0, stackOffset));
 				stackOffset += wordSize;
 			}
-			CFEndMethod end = new CFEndMethod(1, -1);
-			next = makeBlock(node.block, 2, end, null, null);
+			CFEndMethod end = new CFEndMethod(this, -1);
+			next = makeBlock(node.block, this, end, null, null);
 		}
 	}
-	public CFStatement makeBlock(IR.Block block, int scope, CFStatement endBlock, CFStatement breakCFS, CFStatement continueCFS) {
-		CFPushScope pushScope = new CFPushScope(scope, block.line);
+	public CFStatement makeBlock(IR.Block block, CFPushScope parentScope, CFStatement endBlock, CFStatement breakCFS, CFStatement continueCFS) {
+		CFPushScope pushScope = new CFPushScope(parentScope, block.line);
 		pushScope.addFields(block.fields);
 		CFStatement start = pushScope;
 		CFStatement cur = pushScope;
 		for(IR.Statement i: block.statements) {
 			if(i instanceof IR.AssignmentStatement) {
-				cur.next = new CFAssignment(scope, i.line, (IR.AssignmentStatement)i);
+				cur.next = new CFAssignment(pushScope, i.line, (IR.AssignmentStatement)i);
 				cur = cur.next;
 			}
 			else if(i instanceof IR.IfStatement) {
-				CFMergeBranch end = new CFMergeBranch(scope, i.line);
+				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
 				IR.IfStatement ifS = (IR.IfStatement)i;
-				CFShortCircuit sC = new CFShortCircuit(scope, i.line);
+				CFShortCircuit sC = new CFShortCircuit(pushScope, i.line);
 				if(ifS.elseBlock == null)
-					sC.start = shortCircuit(ifS.condition, scope, makeBlock(ifS.block, scope+1, end, breakCFS, continueCFS), end);
-				else sC.start = shortCircuit(ifS.condition, scope, makeBlock(ifS.block, scope+1, end, breakCFS, continueCFS),
-								makeBlock(ifS.elseBlock, scope+1, end, breakCFS, continueCFS));
+					sC.start = shortCircuit(ifS.condition, pushScope, makeBlock(ifS.block, pushScope, end, breakCFS, continueCFS), end);
+				else sC.start = shortCircuit(ifS.condition, pushScope, makeBlock(ifS.block, pushScope, end, breakCFS, continueCFS),
+								makeBlock(ifS.elseBlock, pushScope, end, breakCFS, continueCFS));
 				cur.next = sC;
 				sC.next = end;
 				cur = end;
 			}
 			else if(i instanceof IR.WhileStatement) {
-				cur.next = new CFNop(scope, i.line);
+				cur.next = new CFNop(pushScope, i.line);
 				cur = cur.next;
-				CFMergeBranch end = new CFMergeBranch(scope, i.line);
+				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
 				IR.WhileStatement wS = (IR.WhileStatement)i;
-				CFShortCircuit sC = new CFShortCircuit(scope, i.line);
-				sC.start = shortCircuit(wS.condition, scope, makeBlock(wS.block, scope+1, cur, end, cur), end);
+				CFShortCircuit sC = new CFShortCircuit(pushScope, i.line);
+				sC.start = shortCircuit(wS.condition, pushScope, makeBlock(wS.block, pushScope, cur, end, cur), end);
 				cur.next = sC;
 				sC.next = end;
 				cur = end;
 			}
 			else if(i instanceof IR.ForStatement) {
 				IR.ForStatement fS = (IR.ForStatement)i;
-				cur.next = new CFAssignment(scope, i.line, fS.initLoc, fS.initExpr);
+				cur.next = new CFAssignment(pushScope, i.line, fS.initLoc, fS.initExpr);
 				cur = cur.next;
-				cur.next = new CFNop(scope, i.line);
+				cur.next = new CFNop(pushScope, i.line);
 				cur = cur.next;
-				CFMergeBranch end = new CFMergeBranch(scope, i.line);
-				CFAssignment iteration = new CFForAssignment(scope, i.line, fS.iteration);
+				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
+				CFAssignment iteration = new CFForAssignment(pushScope, i.line, fS.iteration);
 				iteration.next = cur;
-				CFShortCircuit sC = new CFShortCircuit(scope, i.line);
-				sC.start = shortCircuit(fS.condition, scope, makeBlock(fS.block, scope+1, iteration, end, iteration), end);
+				CFShortCircuit sC = new CFShortCircuit(pushScope, i.line);
+				sC.start = shortCircuit(fS.condition, pushScope, makeBlock(fS.block, pushScope, iteration, end, iteration), end);
 				cur.next = sC;
 				sC.next = end;
 				cur = end;
@@ -121,21 +121,21 @@ public class ControlFlow {
 				return start;
 			}
 			else if(i instanceof IR.ReturnStatement) {
-				cur.next = new CFReturn(scope, i.line, (IR.ReturnStatement)i);
+				cur.next = new CFReturn(pushScope, i.line, (IR.ReturnStatement)i);
 				cur = cur.next;
 				break;
 			}
 			else if(i instanceof IR.MethodCall) {
-				cur.next = new CFMethodCall(scope, i.line, (IR.MethodCall)i);
+				cur.next = new CFMethodCall(pushScope, i.line, (IR.MethodCall)i);
 				cur = cur.next;
 			}
 			else throw new IllegalStateException("Bad statement class " + i.getClass().getCanonicalName());
 		}
-		cur.next = new CFNop(scope, -1);
+		cur.next = new CFNop(pushScope, -1);
 		cur.next.next = endBlock;
 		return start;
 	}
-	public CFBranch shortCircuit(IR.Expr condition, int scope, CFStatement ifTrue, CFStatement ifFalse) {
+	public CFBranch shortCircuit(IR.Expr condition, CFPushScope scope, CFStatement ifTrue, CFStatement ifFalse) {
 		CFBranch branch = new CFBranch(scope, condition.line, condition);
 		if(condition.members.size() == 1) {
 			branch.next = ifTrue;
@@ -173,43 +173,50 @@ public class ControlFlow {
 	}
 	public abstract class CFStatement {
 		public CFStatement next;
-		public int scope, line;
+		public int line;
 		public int orderpos;
-		public CFPushScope parentScope;
-		public CFStatement(int scope, int line) {
+		public CFPushScope scope;
+		public CFStatement(CFPushScope scope, int line) {
 			this.scope = scope;
 			this.line = line;
 			this.orderpos = -1;
 		}
 	}
 	public class CFNop extends CFStatement {
-		public CFNop(int scope, int line) {
+		public CFNop(CFPushScope scope, int line) {
 			super(scope, line);
 		}
 	}
 	public class CFEndMethod extends CFNop {
-		public CFEndMethod(int scope, int line) {
+		public CFEndMethod(CFPushScope scope, int line) {
 			super(scope, line);
 		}
 	}
 	public class CFMergeBranch extends CFNop {
-		public CFMergeBranch(int scope, int line) {
+		public CFMergeBranch(CFPushScope scope, int line) {
 			super(scope, line);
 		}
 	}
 	public class CFShortCircuit extends CFStatement {
 		public CFStatement start;
-		public CFShortCircuit(int scope, int line) {
+		public CFShortCircuit(CFPushScope scope, int line) {
 			super(scope, line);
 		}
 	}
 	public class CFPushScope extends CFStatement {
 		public Map<String, VarSym> variables;
-		long stackOffset;
-		public CFPushScope(int scope, int line) {
-			super(scope, line);
-			variables = new HashMap<>();
-			stackOffset = 0;
+		public long stackOffset;
+		public CFPushScope parent;
+		public int depth;
+		public CFPushScope(CFPushScope parent, int line) {
+			super(null, line);
+			this.scope = this;
+			this.parent = parent;
+			if(parent == null)
+				this.depth = 0;
+			else this.depth = parent.depth+1;
+			this.variables = new HashMap<>();
+			this.stackOffset = 0;
 		}
 		//note that stackOffset isn't actually used for global variables
 		public void addFields(List<IR.FieldDecl> fields) {
@@ -230,13 +237,13 @@ public class ControlFlow {
 		public IR.Location loc;
 		public IR.Op op;
 		public IR.Expr expr;
-		public CFAssignment(int scope, int line, IR.AssignmentStatement node) {
+		public CFAssignment(CFPushScope scope, int line, IR.AssignmentStatement node) {
 			super(scope, line);
 			this.loc = node.loc;
 			this.op = node.op;
 			this.expr = node.assignExpr;
 		}
-		public CFAssignment(int scope, int line, IR.Location loc, IR.Expr expr) {
+		public CFAssignment(CFPushScope scope, int line, IR.Location loc, IR.Expr expr) {
 			super(scope, line);
 			this.loc = loc;
 			this.op = new IR.Op(null, -1, IR.Op.Type.assign); //TODO: this has a null parent. is null parent ok? probably
@@ -244,24 +251,24 @@ public class ControlFlow {
 		}
 	}
 	public class CFForAssignment extends CFAssignment {
-		public CFForAssignment(int scope, int line, IR.AssignmentStatement node) {
+		public CFForAssignment(CFPushScope scope, int line, IR.AssignmentStatement node) {
 			super(scope, line, node);
 		}
-		public CFForAssignment(int scope, int line, IR.Location loc, IR.Expr expr) {
+		public CFForAssignment(CFPushScope scope, int line, IR.Location loc, IR.Expr expr) {
 			super(scope, line, loc, expr);
 		}
 	}
 	public class CFBranch extends CFStatement {
 		public IR.Expr condition;
 		public CFStatement next2;
-		public CFBranch(int scope, int line, IR.Expr condition) {
+		public CFBranch(CFPushScope scope, int line, IR.Expr condition) {
 			super(scope, line);
 			this.condition = condition;
 		}
 	}
 	public class CFReturn extends CFStatement {
 		public IR.Expr expr;
-		public CFReturn(int scope, int line, IR.ReturnStatement node) {
+		public CFReturn(CFPushScope scope, int line, IR.ReturnStatement node) {
 			super(scope, line);
 			this.expr = node.expr;
 		}
@@ -269,7 +276,7 @@ public class ControlFlow {
 	public class CFMethodCall extends CFStatement {
 		public String ID;
 		public List<Object> params;
-		public CFMethodCall(int scope, int line, IR.MethodCall call) {
+		public CFMethodCall(CFPushScope scope, int line, IR.MethodCall call) {
 			super(scope, line);
 			this.ID = call.ID;
 			this.params = new ArrayList<>();
@@ -277,10 +284,47 @@ public class ControlFlow {
 				this.params.add(i);
 		}
 	}
+	private int tempExprCount;
+	private Map<IR.Expr, String> tempExpr;
+	
+	private CFStatement breakUpCFSExpr(CFStatement CFS) {
+		if(CFS instanceof CFBranch) {
+			CFBranch CFB = (CFBranch)CFS;
+			
+		}
+		return CFS;
+	}
+	private void postprocessExpr(CFStatement CFS, CFStatement stop) {
+		if(CFS==null || CFS==stop)
+			return;
+		
+		else if(CFS instanceof CFShortCircuit) {
+			CFShortCircuit CFSC = (CFShortCircuit)CFS;
+			CFSC.start = breakUpCFSExpr(CFSC.start);
+			CFSC.next = breakUpCFSExpr(CFSC.next);
+			postprocessExpr(CFSC.start, CFSC.next);
+			postprocessExpr(CFSC.next, stop);
+		}
+		else if(CFS instanceof CFBranch) {
+			CFBranch CFB = (CFBranch)CFS;
+			CFB.next = breakUpCFSExpr(CFB.next);
+			CFB.next2 = breakUpCFSExpr(CFB.next2);
+			postprocessExpr(CFB.next, stop);
+			postprocessExpr(CFB.next2, stop);
+		}
+		else {
+			CFS.next = breakUpCFSExpr(CFS.next);
+			postprocessExpr(CFS.next, stop);
+		}
+	}
 	public void build() {
 		methods = new LinkedHashMap<>();
 		importMethods = new LinkedHashMap<>();
-		tempExprCnt = 0;
 		program = new Program(ir.root);
+		tempExprCount = 0;
+		
+		tempExpr = new HashMap<>();
+		for(Map.Entry<String, MethodSym> i: methods.entrySet())
+			postprocessExpr(i.getValue().code, null);
 	}
 }
