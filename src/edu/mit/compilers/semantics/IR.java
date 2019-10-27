@@ -737,7 +737,15 @@ public class IR {
 			return ((FieldDecl)(this.symbolTable.find(this.ID))).type.getName(); 
 		}
 	}
-	public static class BoolLiteral extends IR.Node {
+	public abstract static class Literal extends IR.Node {
+		public Literal(IR.Node parent, ParseTree.Node node) {
+			super(parent, node);
+		}
+		public Literal(IR.Node parent, int line) {
+			super(parent, line);
+		}
+	}
+	public static class BoolLiteral extends Literal {
 		public boolean value;
 		public BoolLiteral(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
@@ -749,7 +757,7 @@ public class IR {
 			return Boolean.toString(value);
 		}
 	}
-	public static class IntLiteral extends IR.Node {
+	public static class IntLiteral extends Literal {
 		public long value;
 		public IntLiteral(IR.Node parent, ParseTree.Node node, long val) {
 			super(parent, node);
@@ -768,7 +776,7 @@ public class IR {
 			return Long.toString(value);
 		}
 	}
-	public static class CharLiteral extends IR.Node {
+	public static class CharLiteral extends Literal {
 		public char value;
 		public CharLiteral(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);

@@ -141,6 +141,15 @@ public class Codegen {
 						else if(mem0 instanceof IR.Len) {
 							
 						}
+						else if(mem0 instanceof IR.IntLiteral) {
+							
+						}
+						else if(mem0 instanceof IR.CharLiteral) {
+							
+						}
+						else if(mem0 instanceof IR.BoolLiteral) {
+							
+						}
 						else throw new IllegalStateException("Unexpected expr member: " + mem0.getClass().getCanonicalName());
 					}
 					else if(CFS.expr.members.size() == 2) {
