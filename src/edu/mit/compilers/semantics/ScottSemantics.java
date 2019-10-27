@@ -21,6 +21,8 @@ public class ScottSemantics {
 
         IR.Program rootNodeCast = (Program) rootNode;
 
+        // Need to handle issue where there is method global conflict in global scope.
+
         MethodSymbolTable methodTable = new MethodSymbolTable();
 
         // Check 13: The argument of the len operator must be an array variable,
@@ -33,7 +35,6 @@ public class ScottSemantics {
         SymbolTable symbolTable = new SymbolTable();
         rootNode.methodTable = methodTable;
         rootNode.symbolTable = symbolTable;
-        System.out.println("deadbeef");
         NodeCheck(rootNodeCast, symbolTable, methodTable, null);        
     }
 
@@ -46,7 +47,7 @@ public class ScottSemantics {
 
         node.symbolTable = currentScope;
         node.methodTable = methodTable;
-
+    
         if (node instanceof Program) {
             for(IR.Node childNode : node.getChildren()) {
                 NodeCheck(childNode, currentScope, methodTable, currentMethod);
@@ -62,12 +63,16 @@ public class ScottSemantics {
             IR.MethodDecl nodeCast = (IR.MethodDecl) node;
 
             // Check if method is in symbol table and if not try to add it to method table.
-            if(currentScope.SymbolTableEntries.containsKey(nodeCast.ID) || !methodTable.addMethod(nodeCast)){
+            if(
+                currentScope.SymbolTableEntries.containsKey(nodeCast.ID)
+                || !methodTable.addMethod(nodeCast)
+            ){
                 System.out.println("Method Name Already Declared");
             }
 
             // Create new scope at for the method.
             SymbolTable methodScope = new SymbolTable();
+            methodScope.level = currentScope.level + 1;
             methodScope.parent = currentScope;
 
             // Add arguements to symbol table and check for double declaration.
@@ -86,7 +91,10 @@ public class ScottSemantics {
             ImportDecl nodeCast = (ImportDecl) node; 
 
             // TODO: Do I need to check if import name in symbol table?
-            if(nodeCast.methodTable.MethodTableEntries.containsKey(nodeCast.name)){
+            if(
+                nodeCast.methodTable.MethodTableEntries.containsKey(nodeCast.name) 
+                || !methodTable.addImport(nodeCast)
+            ) {
                 System.out.println("Import Name Already Declared");
             }
 
@@ -96,8 +104,11 @@ public class ScottSemantics {
 
             // Check that field has not already been declared.
             // TODO: Do I need to check if name in method table?
-            if(!currentScope.add(nodeCast.ID, nodeCast)) {
-                System.out.println("Field Already Declared");
+            if(
+                !currentScope.add(nodeCast.ID, nodeCast)
+                || (currentScope.level == 0 && (methodTable.contains(nodeCast.ID)))
+            ) {
+                System.out.println("Field Name Already used in Declaration");
             }
 
         } else if(node instanceof FieldDeclArray) {
@@ -132,6 +143,9 @@ public class ScottSemantics {
 
         } else if(node instanceof AssignmentStatement) {
             AssignmentStatement nodeCast = (AssignmentStatement) node;
+        
+            NodeCheck(nodeCast.loc, currentScope, methodTable, currentMethod);
+
             NodeCheck(nodeCast.assignExpr, currentScope, methodTable, currentMethod);
 
         } else if(node instanceof IfStatement) {
@@ -148,6 +162,7 @@ public class ScottSemantics {
 
             // New scope at for the if statement block.
             SymbolTable ifStatementScope = new SymbolTable();
+            ifStatementScope.level = currentScope.level + 1;
             ifStatementScope.parent = currentScope;
 
             // Perform Node Check on if Block.
@@ -155,10 +170,13 @@ public class ScottSemantics {
 
             // New scope at for the else statement block.
             SymbolTable elseStatementScope = new SymbolTable();
+            elseStatementScope.level = currentScope.level + 1;
             elseStatementScope.parent = currentScope;
 
             // Perform Node Check on else Block.
-            NodeCheck(nodeCast.elseBlock, elseStatementScope, methodTable, currentMethod);  
+            if (nodeCast.elseBlock != null) {
+                NodeCheck(nodeCast.elseBlock, elseStatementScope, methodTable, currentMethod);  
+            }
 
         } else if(node instanceof ForStatement) {
 
@@ -176,11 +194,12 @@ public class ScottSemantics {
             }
 
             // New scope at for the for for statement block.
-            SymbolTable forStatementScope = new SymbolTable();
-            forStatementScope.parent = currentScope;
+            SymbolTable forScope = new SymbolTable();
+            forScope.level = currentScope.level + 1;
+            forScope.parent = currentScope;
 
             // Perform Node Check on for Block.
-            NodeCheck(nodeCast.block, forStatementScope, methodTable, currentMethod); 
+            NodeCheck(nodeCast.block, forScope, methodTable, currentMethod); 
 
         } else if(node instanceof WhileStatement) {
 
@@ -195,11 +214,12 @@ public class ScottSemantics {
             }
 
             // New scope at for the for for statement block.
-            SymbolTable forStatementScope = new SymbolTable();
-            forStatementScope.parent = currentScope;
+            SymbolTable whileScope = new SymbolTable();
+            whileScope.level = currentScope.level + 1;
+            whileScope.parent = currentScope;
 
             // Perform Node Check on for Block.
-            NodeCheck(nodeCast.block, forStatementScope, methodTable, currentMethod); 
+            NodeCheck(nodeCast.block, whileScope, methodTable, currentMethod); 
 
         } else if(node instanceof ReturnStatement) {
             ReturnStatement nodeCast = (ReturnStatement) node;
@@ -220,9 +240,13 @@ public class ScottSemantics {
 
             // Semantic Check 11.
             // Just make sure that the method being called is in the method table or import table.
+            // TODO: Use method table contains function.
             if(
-                !methodTable.MethodTableEntries.containsKey(nodeCast.ID) && 
-                !methodTable.ImportTableEntries.containsKey(nodeCast.ID)
+                (currentScope.find(nodeCast.ID) != null)|| 
+                (
+                    !methodTable.MethodTableEntries.containsKey(nodeCast.ID) && 
+                    !methodTable.ImportTableEntries.containsKey(nodeCast.ID)
+                )
             ) {
                 System.out.println("Method not Declared");
             }
@@ -240,8 +264,29 @@ public class ScottSemantics {
                 NodeCheck(member, currentScope, methodTable, currentMethod);
             } 
 
+        } else if(node instanceof LocationNoArray) {
+
+            LocationNoArray nodeCast = (LocationNoArray) node;
+           
+            // Check 2: No identifier is used before it is declared.
+            if (currentScope.find(nodeCast.ID) == null){
+                System.out.println("Variable not declared");
+            }
+
+        } else if(node instanceof LocationArray) {
+
+            LocationArray nodeCast = (LocationArray) node;
+            
+            // Check 2: No identifier is used before it is declared.
+            if (currentScope.find(nodeCast.ID) == null){
+                System.out.println("Variable not declared");
+            }
+            
+            NodeCheck(nodeCast.index, currentScope, methodTable, currentMethod);
+            // Could put check 12 here.
         }
 
+        
     }
 
     // Rule 3
