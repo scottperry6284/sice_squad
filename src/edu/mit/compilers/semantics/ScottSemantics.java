@@ -238,18 +238,21 @@ public class ScottSemantics {
 
             MethodCall nodeCast = (MethodCall) node;
 
-            // Semantic Check 11.
-            // Just make sure that the method being called is in the method table or import table.
-            // TODO: Use method table contains function.
+            // Semantic Check 11: The identifier in a method statement must be a
+            // declared method or import.
             if(
-                (currentScope.find(nodeCast.ID) != null)|| 
-                (
-                    !methodTable.MethodTableEntries.containsKey(nodeCast.ID) && 
-                    !methodTable.ImportTableEntries.containsKey(nodeCast.ID)
-                )
+                currentScope.find(nodeCast.ID) != null || !methodTable.contains(nodeCast.ID)
             ) {
                 System.out.println("Method not Declared");
             }
+
+            // !methodTable.MethodTableEntries.containsKey(nodeCast.ID) 
+            // !methodTable.ImportTableEntries.containsKey(nodeCast.ID)
+
+            // Semantic Check 5.
+
+            // Semantic Check 7.
+
 
             for (IR.Node param : nodeCast.params) {
                 NodeCheck(param, currentScope, methodTable, currentMethod);
