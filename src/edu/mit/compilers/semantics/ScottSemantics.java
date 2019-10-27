@@ -86,7 +86,7 @@ public class ScottSemantics {
             ImportDecl nodeCast = (ImportDecl) node; 
 
             // TODO: Do I need to check if import name in symbol table?
-            if(!nodeCast.methodTable.MethodTableEntries.containsKey(nodeCast.name)){
+            if(nodeCast.methodTable.MethodTableEntries.containsKey(nodeCast.name)){
                 System.out.println("Import Name Already Declared");
             }
 
@@ -203,7 +203,10 @@ public class ScottSemantics {
 
         } else if(node instanceof ReturnStatement) {
             ReturnStatement nodeCast = (ReturnStatement) node;
-            NodeCheck(nodeCast.expr, currentScope, methodTable, currentMethod);
+            
+            if (nodeCast.expr != null) {
+                NodeCheck(nodeCast.expr, currentScope, methodTable, currentMethod);
+            }
 
         } else if(node instanceof BreakStatement) {
             
@@ -216,7 +219,13 @@ public class ScottSemantics {
             MethodCall nodeCast = (MethodCall) node;
 
             // Semantic Check 11.
-            // Just make sure that the method being called is in the symbol table.
+            // Just make sure that the method being called is in the method table or import table.
+            if(
+                !methodTable.MethodTableEntries.containsKey(nodeCast.ID) && 
+                !methodTable.ImportTableEntries.containsKey(nodeCast.ID)
+            ) {
+                System.out.println("Method not Declared");
+            }
 
             for (IR.Node param : nodeCast.params) {
                 NodeCheck(param, currentScope, methodTable, currentMethod);
