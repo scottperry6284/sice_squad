@@ -440,7 +440,7 @@ public class IR {
 			ID = node.child(0).text;
 			params = new ArrayList<>();
 			node = node.child(1); //now points to params
-			for(int i=1; i<node.children.size(); i+=2)
+			for(int i=1; i<node.children.size()-1; i+=2)
 				params.add(new MethodParam(this, node.child(i)));
 		}
 		public String getText() {

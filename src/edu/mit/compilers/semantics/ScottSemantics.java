@@ -1,15 +1,15 @@
 package edu.mit.compilers.semantics;
 import edu.mit.compilers.semantics.IR.*;
 
-import java.util.ArrayDeque;
+// import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+// import java.util.List;
 import java.util.Queue;
 import java.util.prefs.NodeChangeEvent;
-import java.util.zip.Adler32;
+// import java.util.zip.Adler32;
 
-import javax.swing.plaf.SliderUI;
+// import javax.swing.plaf.SliderUI;
 
 import edu.mit.compilers.Utils;
 import java.util.List;
@@ -246,18 +246,67 @@ public class ScottSemantics {
                 System.out.println("Method not Declared");
             }
 
-            // !methodTable.MethodTableEntries.containsKey(nodeCast.ID) 
-            // !methodTable.ImportTableEntries.containsKey(nodeCast.ID)
+            // Semantic Check 5: The number and types of arguments in a method call (non-imports)
+            // must be the same as the number and types of the formals,
+            // i.e., the signatures must be identical.
+            if (methodTable.MethodTableEntries.containsKey(nodeCast.ID)) {
 
-            // Semantic Check 5.
+                // Check that number of params equal between method call and method signiture.
+                if (nodeCast.params.size() != methodTable.getMethod(nodeCast.ID).params.size()) {
+                    System.out.println(
+                        "Method call has different number of arguements than method signiture."
+                    );
+                }
 
-            // Semantic Check 7.
+                // Walk through the arguements in the method call and check that they match
+                // the types of the method parameters.
 
+                for (int i = 0; i < nodeCast.params.size(); i++) {
+        
+                    // Semantic Check 7.
+                    if (nodeCast.params.get(i).val instanceof String) {
+                        System.out.println(
+                            "String literals may not be used as arguments to non-import methods."
+                        );
+                    }
+ 
+                    Expr paramCast = (Expr) nodeCast.params.get(i).val;
 
-            for (IR.Node param : nodeCast.params) {
-                NodeCheck(param, currentScope, methodTable, currentMethod);
+                    NodeCheck(paramCast, currentScope, methodTable, currentMethod);
+
+                    if (
+                        paramCast.members.size() >= 1
+                        && paramCast.members.get(0) instanceof IR.LocationNoArray
+                    ) {
+
+                        IR.LocationNoArray paramLocationNoArray = (
+                            (IR.LocationNoArray) paramCast.members.get(0)
+                        );
+
+                        if (currentScope.find(paramLocationNoArray.ID) instanceof IR.FieldDeclArray) {
+                            System.out.println(
+                                "Array variables may not be used as arguments to non-import methods."
+                            );
+                        }
+                    }
+                    
+                    // Semantic Check 5.
+                    // TODO: Use enum properly.
+
+                    if (
+                        !paramCast.getType().equals(
+                            methodTable.getMethod(nodeCast.ID).params.get(i).type.getName()
+                        )
+                    ) {
+                        System.out.println(
+                            "Type of parameters in method call does not match type of parameters "
+                            + "in method signiture"
+                        );
+                    }
+
+                }
+
             }
-
         } else if(node instanceof Expr) {
 
             Expr nodeCast = (Expr) node;

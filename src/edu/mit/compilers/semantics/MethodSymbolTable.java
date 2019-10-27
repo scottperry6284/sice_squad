@@ -30,6 +30,10 @@ public class MethodSymbolTable {
         }
     }
 
+    public MethodDecl getMethod(String ID) {
+        return MethodTableEntries.get(ID);
+    }
+
     public boolean addImport(ImportDecl importStatement){
 
         if (
@@ -42,6 +46,10 @@ public class MethodSymbolTable {
             ImportTableEntries.put(importStatement.name, importStatement);
             return true;
         }
+    }
+
+    public ImportDecl getImport(String ID) {
+        return ImportTableEntries.get(ID);
     }
 
     public boolean contains(String ID){
