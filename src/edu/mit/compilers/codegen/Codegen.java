@@ -14,7 +14,6 @@ import edu.mit.compilers.codegen.ControlFlow.CFBranch;
 import edu.mit.compilers.codegen.ControlFlow.CFEndMethod;
 import edu.mit.compilers.codegen.ControlFlow.CFMethodCall;
 import edu.mit.compilers.codegen.ControlFlow.CFNop;
-import edu.mit.compilers.codegen.ControlFlow.CFPopScope;
 import edu.mit.compilers.codegen.ControlFlow.CFPushScope;
 import edu.mit.compilers.codegen.ControlFlow.CFShortCircuit;
 import edu.mit.compilers.codegen.ControlFlow.CFStatement;
@@ -27,7 +26,7 @@ public class Codegen {
 	public List<Asm> asmOutput;
 	public static class Asm {
 		public enum Op { //newline is just whitespace for formatting
-			label, pushq, movq, popq, add, sub, ret, custom, newline, xor, jz, jnz, test, inc, dec;
+			methodlabel, label, pushq, movq, popq, add, sub, ret, custom, newline, xor, jz, jnz, test, inc, dec, cmp;
 		}
 		public Op op;
 		public String arg1, arg2;
@@ -44,7 +43,9 @@ public class Codegen {
 			this.arg2 = arg2;
 		}
 		public String toString() {
-			if(op == Op.label)
+			if(op == Op.custom)
+				return arg1;
+			if(op == Op.label || op == Op.methodlabel)
 				return arg1 + ":";
 			if(op == Op.newline)
 				return "";
@@ -90,9 +91,13 @@ public class Codegen {
 			throw new IllegalStateException("Variable with name \"" + name + "\" not found in any scope");
 		return CF.program.variables.get(name).stackOffset + "(%globalvar)";
 	}
-	private void processCFS(CFStatement _CFS, CFStatement stop) {
-		while(_CFS != null && _CFS != stop) {
+	private void processCFS(CFStatement _CFS, int scopeStop) {
+		while(_CFS != null && _CFS.scope > scopeStop) {
+			for(int i=0; i<_CFS.scope; i++)
+				System.out.print("  ");
+			System.out.println(_CFS.getClass().getCanonicalName());
 			addLabel(_CFS);
+			int prevScope = _CFS.scope;
 			if(_CFS instanceof CFPushScope) { //or Method
 				CFPushScope CFS = (CFPushScope)_CFS;
 				scopes.add(CFS);
@@ -101,12 +106,13 @@ public class Codegen {
 				asmOutput.add(new Asm(Asm.Op.add, "%rsp", "$-" + CFS.stackOffset));
 				_CFS = _CFS.next;
 			}
-			else if(_CFS instanceof CFPopScope) { //or CFEndMethod
-				scopes.remove(scopes.size()-1);
-				asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
-				asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
-				if(_CFS instanceof CFEndMethod)
+			else if(_CFS instanceof CFEndMethod) {
+				while(scopes.size() > 1) {
+					scopes.remove(scopes.size()-1);
+					asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
+					asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
 					asmOutput.add(new Asm(Asm.Op.ret));
+				}
 				_CFS = _CFS.next;
 			}
 			else if(_CFS instanceof CFShortCircuit) {
@@ -118,8 +124,8 @@ public class Codegen {
 					CFStatement cur = statements.poll();
 					if(cur instanceof CFBranch) {
 						CFBranch CFB = (CFBranch)cur;
-						asmOutput.add(new Asm(Asm.Op.test, ""));
-						asmOutput.add(new Asm(Asm.Op.jnz, ""));
+						asmOutput.add(new Asm(Asm.Op.cmp, "%if_condition", "$1"));
+						asmOutput.add(new Asm(Asm.Op.jnz, "jump_location"));
 						statements.add(CFB.next);
 						statements.add(CFB.next2);
 					}
@@ -133,9 +139,9 @@ public class Codegen {
 				if(!nextSet)
 					throw new IllegalStateException("CFShortCircuit has no next CFPushScope");
 				List<CFPushScope> oldScopes = new ArrayList<>(scopes);
-				processCFS(_CFS, ((CFPushScope)_CFS).end);
+				processCFS(_CFS, CFS.scope); //block inside the shortCircuit
 				scopes = oldScopes;
-				_CFS = _CFS.next;
+				_CFS = CFS.next;
 			}
 			else if(_CFS instanceof CFAssignment) {
 				CFAssignment CFS = (CFAssignment)_CFS;
@@ -219,10 +225,21 @@ public class Codegen {
 				_CFS = _CFS.next;
 			}
 			else throw new IllegalStateException("Unexpected CFS type: " + _CFS.getClass().getCanonicalName());
-			for(int i=0; i<_CFS.scope; i++)
-				System.out.print("  ");
-			System.out.println(_CFS.getClass().getCanonicalName());
+			if(_CFS != null && _CFS.scope != prevScope) {
+				while(scopes.size() > _CFS.next.scope) {
+					scopes.remove(scopes.size()-1);
+					asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
+					asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
+				}
+			}
 		}
+	}
+	private void methodToAsm(String name, ControlFlow.MethodSym method) {
+		if(name.equals("main"))
+			asmOutput.add(new Asm(Asm.Op.custom, ".globl main"));
+		asmOutput.add(new Asm(Asm.Op.methodlabel, name));
+		processCFS(method.code, -1);
+		asmOutput.add(new Asm(Asm.Op.newline));
 	}
 	public void build() {
 		asmOutput = new ArrayList<>();
@@ -232,18 +249,23 @@ public class Codegen {
 		usedLabels = new HashSet<>();
 		scopes = new ArrayList<>();
 		//don't add CF.program to scopes because it's a special global scope
-		asmOutput.add(new Asm(Asm.Op.custom, ".comm globalvar, " + CF.program.stackOffset));
-		for(Map.Entry<String, ControlFlow.MethodSym> method: CF.methods.entrySet()) {
-			String name = method.getKey();
-			if(name.equals("main"))
-				asmOutput.add(new Asm(Asm.Op.custom, ".globl main"));
-			asmOutput.add(new Asm(Asm.Op.label, name));
-			processCFS(method.getValue().code, null);
-		}
-		
+		asmOutput.add(new Asm(Asm.Op.custom, ".comm globalvar, " + CF.program.stackOffset + ", 8"));
+		asmOutput.add(new Asm(Asm.Op.newline));
+		for(Map.Entry<String, ControlFlow.MethodSym> method: CF.methods.entrySet())
+			methodToAsm(method.getKey(), method.getValue());
+
 		asmOutput.removeIf(x -> x.op==Asm.Op.label && !usedLabels.contains(x.arg1));
 		
-		for(Asm i: asmOutput)
+		System.out.println();
+		boolean indent = false;
+		for(Asm i: asmOutput) {
+			if(indent)
+				System.out.print("\t");
 			System.out.println(i);
+			if(i.op == Asm.Op.newline)
+				indent = false;
+			else if(i.op == Asm.Op.methodlabel)
+				indent = true;
+		}
 	}
 }
