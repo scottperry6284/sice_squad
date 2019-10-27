@@ -584,6 +584,14 @@ public class IR {
 						if (((Op)child2).type == Op.Type.plus || ((Op)child2).type == Op.Type.minus || ((Op)child2).type == Op.Type.mult || ((Op)child2).type == Op.Type.div || ((Op)child2).type == Op.Type.mod){
 							return "int"; 
 						}
+						if (((Op)child2).type == Op.Type.andand || ((Op)child2).type == Op.Type.oror){
+							if ((((Expr)child1).getType()) != "bool"){
+								throw new IllegalStateException ("Bad conditional operator."); 
+							}
+							if ((((Expr)(members.get(2))).getType()) != "bool"){
+								throw new IllegalStateException ("Bad conditional operator."); 
+							}
+						}
 						return "bool";
 					}
 				}
@@ -734,6 +742,7 @@ public class IR {
 			return ID;
 		}
 		public String getType(){
+			System.out.println("LOL: " + this.ID); 
 			return ((FieldDecl)(this.symbolTable.find(this.ID))).type.getName(); 
 		}
 	}
