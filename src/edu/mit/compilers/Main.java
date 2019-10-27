@@ -103,6 +103,7 @@ token.getType() != DecafParserTokenTypes.EOF;
           Semantics.check9 (irbuilder.root); 
           Semantics.check12 (irbuilder.root); 
           Semantics.check18 (irbuilder.root);
+          Semantics.check13 (irbuilder.root);
 	      }
 	      catch(Exception e) {
 	    	  e.printStackTrace();
