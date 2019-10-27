@@ -14,12 +14,14 @@ import java.util.List;
 public class MethodSymbolTable {
 
     public int level;
+
+    // TODO: Change names so first charater lower case.
     public HashMap<String, MethodDecl> MethodTableEntries = new HashMap<String, MethodDecl>();
     public HashMap<String, ImportDecl> ImportTableEntries = new HashMap<String, ImportDecl>();
 
     public boolean addMethod(MethodDecl method){
 
-        if (MethodTableEntries.containsKey(method.ID)) {
+        if (MethodTableEntries.containsKey(method.ID) || ImportTableEntries.containsKey(method.ID)) {
             return false;
         }
         else {
@@ -30,13 +32,23 @@ public class MethodSymbolTable {
 
     public boolean addImport(ImportDecl importStatement){
 
-        if (ImportTableEntries.containsKey(importStatement.name)) {
+        if (
+            ImportTableEntries.containsKey(importStatement.name)
+            || MethodTableEntries.containsKey(importStatement.name)
+        ) {
             return false;
         }
         else {
             ImportTableEntries.put(importStatement.name, importStatement);
             return true;
         }
+    }
+
+    public boolean contains(String ID){
+        if (MethodTableEntries.containsKey(ID) || ImportTableEntries.containsKey(ID)) {
+            return true;
+        }
+        return false;
     }
 }
 
