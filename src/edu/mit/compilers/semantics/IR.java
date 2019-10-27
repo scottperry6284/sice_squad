@@ -546,7 +546,7 @@ public class IR {
 			}
 			if (child1 instanceof MethodCall){
 				//System.out.println("ID: " + ((MethodCall)child1).ID); 
-				if (this.methodTable.MethodTableEntries.containsValue(((MethodCall)child1).ID)){
+				if (this.methodTable.MethodTableEntries.containsKey(((MethodCall)child1).ID)){
 					String ans = this.methodTable.MethodTableEntries.get(((MethodCall)child1).ID).type.getName(); 
 					
 					
