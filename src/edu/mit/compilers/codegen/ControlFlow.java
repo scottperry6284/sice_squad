@@ -114,6 +114,7 @@ public class ControlFlow {
 				int parentScope = 2;
 				if(breakCFS != null)
 					parentScope = breakCFS.scope;
+				System.out.println(scope);
 				for(int j=scope-1; j>parentScope; j--) {
 					cur.next = new CFPopScope(scope);
 					cur = cur.next;
