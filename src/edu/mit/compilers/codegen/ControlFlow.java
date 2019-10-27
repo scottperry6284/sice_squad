@@ -31,8 +31,8 @@ public class ControlFlow {
 	}
 	public class MethodSym {
 		public IR.IRType type;
-		public CFStatement code;
-		public MethodSym(IR.IRType type, CFStatement code) {
+		public Method code;
+		public MethodSym(IR.IRType type, Method code) {
 			this.type = type;
 			this.code = code;
 		}
@@ -83,6 +83,7 @@ public class ControlFlow {
 				else sC.start = shortCircuit(ifS.condition, scope, makeBlock(ifS.block, scope+1, end, breakCFS, continueCFS),
 								makeBlock(ifS.elseBlock, scope+1, end, breakCFS, continueCFS));
 				cur.next = sC;
+				sC.next = end;
 				cur = end;
 			}
 			else if(i instanceof IR.WhileStatement) {
@@ -93,6 +94,7 @@ public class ControlFlow {
 				CFShortCircuit sC = new CFShortCircuit(scope, i.line);
 				sC.start = shortCircuit(wS.condition, scope, makeBlock(wS.block, scope+1, cur, end, cur), end);
 				cur.next = sC;
+				sC.next = end;
 				cur = end;
 			}
 			else if(i instanceof IR.ForStatement) {
@@ -107,6 +109,7 @@ public class ControlFlow {
 				CFShortCircuit sC = new CFShortCircuit(scope, i.line);
 				sC.start = shortCircuit(fS.condition, scope, makeBlock(fS.block, scope+1, iteration, end, iteration), end);
 				cur.next = sC;
+				sC.next = end;
 				cur = end;
 			}
 			else if(i instanceof IR.BreakStatement) {
@@ -171,9 +174,12 @@ public class ControlFlow {
 	public abstract class CFStatement {
 		public CFStatement next;
 		public int scope, line;
+		public int orderpos;
+		public CFPushScope parentScope;
 		public CFStatement(int scope, int line) {
 			this.scope = scope;
 			this.line = line;
+			this.orderpos = -1;
 		}
 	}
 	public class CFNop extends CFStatement {
@@ -198,7 +204,6 @@ public class ControlFlow {
 		}
 	}
 	public class CFPushScope extends CFStatement {
-		public CFPushScope parent;
 		public Map<String, VarSym> variables;
 		long stackOffset;
 		public CFPushScope(int scope, int line) {
