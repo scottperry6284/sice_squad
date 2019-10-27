@@ -116,8 +116,11 @@ public class IR {
 	}
 	private static long getIntValue(ParseTree.Node node) {
 		node = node.child(0);
-		if(node.type == ParseTree.Node.Type.HEXLITERAL)
+		if(node.type == ParseTree.Node.Type.HEXLITERAL) {
+			if(node.text.charAt(0) == '-')
+				return Long.parseLong("-" + node.text.substring(3), 16);
 			return Long.parseLong(node.text.substring(2), 16);
+		}
 		return Long.parseLong(node.text);
 	}
 	public class Program extends IR.Node {
@@ -816,6 +819,8 @@ public class IR {
 				if(_node instanceof Op) {
 					Op op = (Op)_node;
 					if(op.type == cur) {
+						if(cur==Op.Type.minus && i==0 || !(expr.members.get(i-1) instanceof Op))
+							continue;
 						List<Node> newMembers = new ArrayList<>();
 						Expr e1 = new Expr(expr, expr.line, expr.members.subList(0, i));
 						Expr e2 = new Expr(expr, expr.line, expr.members.subList(i+1, expr.members.size()));
