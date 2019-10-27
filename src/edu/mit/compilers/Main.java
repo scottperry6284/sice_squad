@@ -2,6 +2,8 @@ package edu.mit.compilers;
 
 import java.io.*;
 import antlr.Token;
+import edu.mit.compilers.codegen.Codegen;
+import edu.mit.compilers.codegen.ControlFlow;
 import edu.mit.compilers.grammar.*;
 import edu.mit.compilers.semantics.IR;
 import edu.mit.compilers.semantics.ParseTree;
@@ -88,7 +90,6 @@ token.getType() != DecafParserTokenTypes.EOF;
 	      try {
 	    	  IR irbuilder = new IR(parseTree);
 	    	  irbuilder.build();
-	    	  irbuilder.postprocess();
 	    	  irbuilder.root.print();
           ScottSemantics.RootCheck(irbuilder.root); 
           Semantics.check4 (irbuilder.root); 
@@ -102,6 +103,30 @@ token.getType() != DecafParserTokenTypes.EOF;
 	      catch(Exception e) {
 	    	  e.printStackTrace();
 	      }
+	  	}
+	  else if(CLI.target == Action.ASSEMBLY) {
+	      DecafScanner scanner = new DecafScanner(new DataInputStream(inputStream));
+	      DecafParser parser = new DecafParser(scanner);
+	      parser.setTrace(CLI.debug);
+	      parser.program();
+	      System.out.println(parser.getError()? "Error": "No error");
+	      if(parser.getError()) {
+	        System.exit(1);
+	      }
+	      ParseTree parseTree = new ParseTree(parser);
+	      parseTree.build();
+	      try {
+	    	  IR irbuilder = new IR(parseTree);
+	    	  irbuilder.build();
+	    	  ControlFlow CF = new ControlFlow(irbuilder);
+	    	  CF.build();
+	    	  Codegen CG = new Codegen(CF);
+	    	  CG.build();
+	      }
+	      catch(Exception e) {
+	    	  e.printStackTrace();
+	      }
+	      
 	  	}
     }
 	catch(Exception e) {

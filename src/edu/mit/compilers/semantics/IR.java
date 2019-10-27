@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Queue;
 
 import edu.mit.compilers.Utils;
-import edu.mit.compilers.semantics.Semantics.*; 
-//import edu.mit.compilers.semantics.SymbolTable.*; 
 
 public class IR {
 	private ParseTree parseTree;
@@ -786,6 +784,7 @@ public class IR {
 	}
 	public void build() {
 		root = new Program(parseTree.root);
+		postprocess();
 	}
 	private final Op.Type[] exprPrecedence = new Op.Type[] {Op.Type.oror, Op.Type.andand, Op.Type.neq, Op.Type.eq, Op.Type.less,
 			Op.Type.leq, Op.Type.greater, Op.Type.geq, Op.Type.plus, Op.Type.minus, Op.Type.mult,

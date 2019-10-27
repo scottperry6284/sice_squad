@@ -68,7 +68,7 @@ public class ControlFlow {
 		CFStatement cur = pushScope;
 		for(IR.Statement i: block.statements) {
 			if(i instanceof IR.AssignmentStatement) {
-				cur = new CFAssignment((IR.AssignmentStatement)i);
+				cur.next = new CFAssignment((IR.AssignmentStatement)i);
 				cur = cur.next;
 			}
 			else if(i instanceof IR.IfStatement) {
