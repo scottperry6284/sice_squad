@@ -215,7 +215,7 @@ public class ControlFlow {
 		}
 		public CFAssignment(IR.Location loc, IR.Expr expr) {
 			this.loc = loc;
-			this.op = new IR.Op(null, IR.Op.Type.assign); //TODO: this has a null parent. is null parent ok? probably
+			this.op = new IR.Op(null, -1, IR.Op.Type.assign); //TODO: this has a null parent. is null parent ok? probably
 			this.expr = expr;
 		}
 	}
