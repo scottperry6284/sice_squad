@@ -131,7 +131,8 @@ public class ScottSemantics {
             }
 
         } else if(node instanceof AssignmentStatement) {
-            // Todo
+            AssignmentStatement nodeCast = (AssignmentStatement) node;
+            NodeCheck(nodeCast.assignExpr, currentScope, methodTable, currentMethod);
 
         } else if(node instanceof IfStatement) {
             
@@ -201,14 +202,25 @@ public class ScottSemantics {
             NodeCheck(nodeCast.block, forStatementScope, methodTable, currentMethod); 
 
         } else if(node instanceof ReturnStatement) {
+            ReturnStatement nodeCast = (ReturnStatement) node;
+            NodeCheck(nodeCast.expr, currentScope, methodTable, currentMethod);
 
         } else if(node instanceof BreakStatement) {
+            
 
         } else if(node instanceof ContinueStatement) {
+            
 
         } else if(node instanceof MethodCall) {
+
+            MethodCall nodeCast = (MethodCall) node;
+
             // Semantic Check 11.
             // Just make sure that the method being called is in the symbol table.
+
+            for (IR.Node param : nodeCast.params) {
+                NodeCheck(param, currentScope, methodTable, currentMethod);
+            }
 
         } else if(node instanceof Expr) {
 
