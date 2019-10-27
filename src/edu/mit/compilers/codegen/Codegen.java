@@ -78,7 +78,17 @@ public class Codegen {
 			throw new IllegalStateException("Variable with name " + name + " not found in any scope");
 		return CF.program.variables.get(name).stackOffset + "(%globalvar)";
 	}
-	private ControlFlow.CFStatement processCFS(ControlFlow.CFStatement _CFS) {
+	private void processCFBranch(ControlFlow.CFStatement _CFS) {
+		if(!(_CFS instanceof ControlFlow.CFBranch))
+			return;
+		addLabel(_CFS);
+		ControlFlow.CFBranch CFS = (ControlFlow.CFBranch)_CFS;
+		addLabelIfNonexistent(CFS.next);
+		addLabelIfNonexistent(CFS.next2);
+		processCFBranch(CFS.next);
+		processCFBranch(CFS.next2);
+	}
+	private void processCFS(ControlFlow.CFStatement _CFS) {
 		while(_CFS != null) {
 			addLabel(_CFS);
 			if(_CFS instanceof ControlFlow.CFPushScope) { //or Method
@@ -99,10 +109,11 @@ public class Codegen {
 			}
 			else if(_CFS instanceof ControlFlow.CFBranch) {
 				ControlFlow.CFBranch CFS = (ControlFlow.CFBranch)_CFS;
+				
 				addLabelIfNonexistent(CFS.next);
 				addLabelIfNonexistent(CFS.next2);
-				processCFS(CFS.next);
-				_CFS = processCFS(CFS.next2);
+				processCFBranch(CFS.next);
+				processCFBranch(CFS.next2);
 			}
 			else if(_CFS instanceof ControlFlow.CFAssignment) {
 				ControlFlow.CFAssignment CFS = (ControlFlow.CFAssignment)_CFS;
@@ -167,10 +178,7 @@ public class Codegen {
 				else throw new IllegalStateException("Unknown method ID: " + CFS.ID);
 				_CFS = _CFS.next;
 			}
-			else if(_CFS instanceof ControlFlow.CFMergeBranch)
-				return _CFS;
 		}
-		return null;
 	}
 	public void build() {
 		asmOutput = new ArrayList<>();

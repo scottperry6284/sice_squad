@@ -57,7 +57,8 @@ public class ControlFlow {
 				variables.put(i.ID, new VarSym(i.type, 0, stackOffset));
 				stackOffset += wordSize;
 			}
-			next = makeBlock(node.block, new CFEndMethod());
+			end = new CFEndMethod();
+			next = makeBlock(node.block, end);
 		}
 	}
 	public CFStatement makeBlock(IR.Block block, CFStatement endBlock) {
@@ -73,9 +74,11 @@ public class ControlFlow {
 			else if(i instanceof IR.IfStatement) {
 				CFMergeBranch end = new CFMergeBranch();
 				IR.IfStatement ifS = (IR.IfStatement)i;
+				CFShortCircuit sC = new CFShortCircuit();
 				if(ifS.elseBlock == null)
-					cur.next = shortCircuit(ifS.condition, makeBlock(ifS.block, end), end);
-				else cur.next = shortCircuit(ifS.condition, makeBlock(ifS.block, end), makeBlock(ifS.elseBlock, end));
+					sC.start = shortCircuit(ifS.condition, makeBlock(ifS.block, end), end);
+				else sC.start = shortCircuit(ifS.condition, makeBlock(ifS.block, end), makeBlock(ifS.elseBlock, end));
+				cur.next = sC;
 				cur = end;
 			}
 			else if(i instanceof IR.WhileStatement) {
@@ -117,7 +120,7 @@ public class ControlFlow {
 			}
 			else throw new IllegalStateException("Bad statement class " + i.getClass().getCanonicalName());
 		}
-		cur.next = new CFPopScope();
+		pushScope.end = cur.next = new CFPopScope();
 		cur.next.next = endBlock;
 		return start;
 	}
@@ -168,8 +171,12 @@ public class ControlFlow {
 	public class CFMergeBranch extends CFNop {
 		
 	}
+	public class CFShortCircuit extends CFStatement {
+		public CFStatement start;
+	}
 	public class CFPushScope extends CFStatement {
 		public CFPushScope parent;
+		public CFStatement end;
 		public Map<String, VarSym> variables;
 		long stackOffset;
 		public CFPushScope() {
