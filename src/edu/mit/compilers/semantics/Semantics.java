@@ -87,7 +87,7 @@ public class Semantics{
         return ans; 
     }
     public static void check6 (IR.Node node){
-        /* also handles check 17 */
+        /* also handles check 16 and 17 */
         if (node == null) return; 
         if (node instanceof Expr){
             String ret = ((Expr)node).getType(); 
@@ -169,8 +169,10 @@ public class Semantics{
         /* also handles check 19 */
         if (node == null) return; 
         if (node instanceof AssignmentStatement){
-            if (!(((AssignmentStatement)node).loc.getType().equals(((AssignmentStatement)node).assignExpr.getType()))){
-                throw new IllegalStateException ("Bad assignment."); 
+            if (((AssignmentStatement)node).assignExpr != null){
+                if (!(((AssignmentStatement)node).loc.getType().equals(((AssignmentStatement)node).assignExpr.getType()))){
+                    throw new IllegalStateException ("Bad assignment."); 
+                }
             }
             if ((((AssignmentStatement)node).op.type == Op.Type.minusequals) || (((AssignmentStatement)node).op.type == Op.Type.plusequals)){
                 if (!(((AssignmentStatement)node).loc.getType().equals("int"))){
