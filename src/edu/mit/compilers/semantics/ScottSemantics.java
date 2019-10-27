@@ -246,13 +246,53 @@ public class ScottSemantics {
                 System.out.println("Method not Declared");
             }
 
-            // !methodTable.MethodTableEntries.containsKey(nodeCast.ID) 
-            // !methodTable.ImportTableEntries.containsKey(nodeCast.ID)
+            // Semantic Check 5: The number and types of arguments in a method call (non-imports)
+            // must be the same as the number and types of the formals,
+            // i.e., the signatures must be identical.
+            if (methodTable.MethodTableEntries.containsKey(nodeCast.ID)) {
 
-            // Semantic Check 5.
+                // Check that number of params equal between method call and method signiture.
+                if (nodeCast.params.size() != methodTable.getMethod(nodeCast.ID).params.size()) {
+                    System.out.println(
+                        "Method call has different number of arguements than method signiture."
+                    );
+                }
 
-            // Semantic Check 7.
+                // Walk through the arguements in the method call and check that they match
+                // the types of the method parameters.
 
+                for (int i = 0; i < nodeCast.params.size(); i++) {
+
+                    // Semantic Check 7.
+                    if (nodeCast.params.get(i).val instanceof String) {
+                        System.out.println(
+                            "String literals may not be used as arguments to non-import methods."
+                        );
+                    }
+ 
+                    Expr paramCast = (Expr) nodeCast.params.get(i).val;
+
+                    // if (paramCast.getType() instanceof IR.FieldDeclArray) {
+                    //     System.out.println(
+                    //         "Array variables may not be used as arguments to non-import methods."
+                    //     );
+                    // }
+                    
+                    // Semantic Check 5.
+                    // TODO: Use enum properly.
+                    if (
+                        !paramCast.getType().equals(
+                            methodTable.getMethod(nodeCast.ID).params.get(i).type.getName()
+                        )
+                    ) {
+                        System.out.println(
+                            "Type of parameters in method call does not match type of parameters "
+                            + "in method signiture"
+                        );
+                    }
+
+                }
+            }
 
             for (IR.Node param : nodeCast.params) {
                 NodeCheck(param, currentScope, methodTable, currentMethod);
