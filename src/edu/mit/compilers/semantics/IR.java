@@ -484,13 +484,18 @@ public class IR {
 			members = new ArrayList<>();
 			members.add(new IntLiteral(this, node, val));
 		}
-		public Expr(IR.Node parent, ParseTree.Node node, List<Node> members) {
+		public Expr(IR.Node parent, ParseTree.Node node, List<IR.Node> members) {
 			super(parent, node);
 			this.members = members;
 		}
-		public Expr(IR.Node parent, int line, List<Node> members) {
+		public Expr(IR.Node parent, int line, List<IR.Node> members) {
 			super(parent, line);
 			this.members = members;
+		}
+		public Expr(IR.Node parent, int line, IR.Node child) {
+			super(parent, line);
+			this.members = new ArrayList<>();
+			this.members.add(child);
 		}
 		public Expr(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
@@ -822,11 +827,12 @@ public class IR {
 		root = new Program(parseTree.root);
 		postprocess();
 	}
-	private final Op.Type[] exprPrecedence = new Op.Type[] {Op.Type.oror, Op.Type.andand, Op.Type.neq, Op.Type.eq, Op.Type.less,
+	private final Op.Type[] binOpExprPrecedence = new Op.Type[] {Op.Type.oror, Op.Type.andand, Op.Type.neq, Op.Type.eq, Op.Type.less,
 			Op.Type.leq, Op.Type.greater, Op.Type.geq, Op.Type.plus, Op.Type.minus, Op.Type.mult,
-			Op.Type.div, Op.Type.mod, Op.Type.not}; //Op.Type.minus is alraedy manually handled
+			Op.Type.div, Op.Type.mod}; //Op.Type.minus is already manually handled
+	private final Op.Type[] unaryOpExprPrecedence = new Op.Type[] {Op.Type.minus, Op.Type.not};
 	private void parseExpr(Expr expr) {
-		for(Op.Type cur: exprPrecedence) {
+		for(Op.Type cur: binOpExprPrecedence) {
 			for(int i=0; i<expr.members.size(); i++) {
 				Node _node = expr.members.get(i);
 				if(_node instanceof Op) {
@@ -848,14 +854,60 @@ public class IR {
 				}
 			}
 		}
+		//I'm operating with the assumption that negation and not effectively have the same precedence
+		//precedence is pretty much ignored
+		if(expr.members.size() > 2) {
+			for(Op.Type cur: unaryOpExprPrecedence) {
+				Node _node = expr.members.get(0);
+				if(_node instanceof Op) {
+					Op op = (Op)_node;
+					if(op.type == cur) {
+						List<Node> newMembers = new ArrayList<>();
+						Expr e2 = new Expr(expr, expr.line, expr.members.subList(1, expr.members.size()));
+						parseExpr(e2);
+						newMembers.add(new Op(expr, op.line, op.type));
+						newMembers.add(e2);
+						expr.members = newMembers;
+						return;
+					}
+				}
+			}
+		}
 	}
-	public void postprocess() {
+	private void fixNesting(Expr expr) {
+		if(expr.members.size() == 1) {
+			Node child0 = expr.members.get(0);
+			if(child0 instanceof Expr) {
+				expr.members.clear();
+				for(IR.Node i: ((Expr)child0).members) {
+					expr.members.add(i);
+					i.parent = expr;
+				}
+				fixNesting(expr);
+			}
+		}
+		else if(expr.members.size() == 2) {
+			if(!(expr.members.get(1) instanceof Expr))
+				expr.members.set(1, new Expr(expr, expr.line, expr.members.get(1)));
+			else fixNesting((Expr)expr.members.get(1));
+		}
+		else if(expr.members.size() == 3) {
+			if(!(expr.members.get(0) instanceof Expr))
+				expr.members.set(0, new Expr(expr, expr.line, expr.members.get(0)));
+			else fixNesting((Expr)expr.members.get(0));
+			if(!(expr.members.get(2) instanceof Expr))
+				expr.members.set(2, new Expr(expr, expr.line, expr.members.get(2)));
+			else fixNesting((Expr)expr.members.get(2));
+		}
+	}
+	private void postprocess() {
 		IRTraverser irTraverser = new IRTraverser(this);
 		while(irTraverser.hasNext()) {
 			IR.Node _node = irTraverser.getNext();
 			if(_node instanceof Expr) {
 				Expr expr = (Expr)_node;
 				parseExpr(expr);
+				fixNesting(expr);
 			}
 		}
 	}
