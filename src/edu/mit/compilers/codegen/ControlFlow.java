@@ -286,10 +286,29 @@ public class ControlFlow {
 	}
 	private int tempExprCount;
 	private Map<IR.Expr, String> tempExpr;
-	
+	private String getTempVar(IR.Expr node) {
+		if(!tempExpr.containsKey(node)) {
+			String name = "@temp" + tempExprCount;
+			tempExpr.put(node, name);
+			return name;
+		}
+		return tempExpr.get(node);
+	}
+	private CFStatement breakUpExprBool(CFStatement inCFS, IR.Expr expr) {
+		CFStatement cur = new CFNop(inCFS.scope, inCFS.line);
+		CFStatement start = cur;
+		if(expr.members.size() == 2) {
+			
+		}
+		return start;
+	}
 	private CFStatement breakUpCFSExpr(CFStatement CFS) {
 		if(CFS instanceof CFBranch) {
 			CFBranch CFB = (CFBranch)CFS;
+			return breakUpExprBool(CFB, CFB.condition);
+		}
+		else if(CFS instanceof CFAssignment) {
+			CFAssignment CFAS = (CFAssignment)CFS;
 			
 		}
 		return CFS;

@@ -858,7 +858,7 @@ public class IR {
 				if(_node instanceof Op) {
 					Op op = (Op)_node;
 					if(op.type == cur) {
-						if(cur==Op.Type.minus && i==0 || !(expr.members.get(i-1) instanceof Op))
+						if(cur==Op.Type.minus && (i==0 || !(expr.members.get(i-1) instanceof Op)))
 							continue;
 						List<Node> newMembers = new ArrayList<>();
 						Expr e1 = new Expr(expr, expr.line, expr.members.subList(0, i));
