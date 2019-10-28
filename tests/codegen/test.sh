@@ -111,7 +111,7 @@ function test-should-fail {
   case $CODE in
     0) red "failed to throw a runtime error -- '$(clean $DCF_FILE)'";;
     3) red "your compiler threw an error -- '$(clean $DCF_FILE)'";;
-    *) green "successfully threw a runtime error -- '$(clean $DCF_FILE)'";
+    1|2) green "successfully threw a runtime error -- '$(clean $DCF_FILE)'";
        echo 'TESTCASE-PASS';;
   esac
 }
