@@ -578,7 +578,13 @@ public class IR {
 				return "int"; 
 			}
 			if (child1 instanceof Op){
-				if (((Op)child1).type == Op.Type.minus) return "int"; 
+				if (((Op)child1).type == Op.Type.minus) {
+					Expr child2 = (Expr)members.get(1); 
+					if (child2.getType() != "int"){
+						throw new IllegalStateException ("Bad minus expression."); 
+					}	
+					return "int"; 
+				}
 				if (((Op)child1).type == Op.Type.not) {
 					Expr child2 = (Expr)members.get(1); 
 					if (child2.getType() != "bool"){
@@ -593,6 +599,12 @@ public class IR {
 					IR.Node child2 = members.get(1); 
 					if (child2 instanceof Op){
 						if (((Op)child2).type == Op.Type.plus || ((Op)child2).type == Op.Type.minus || ((Op)child2).type == Op.Type.mult || ((Op)child2).type == Op.Type.div || ((Op)child2).type == Op.Type.mod){
+							if ((((Expr)child1).getType()) != "int"){
+								throw new IllegalStateException ("Bad arith operator."); 
+							}
+							if ((((Expr)(members.get(2))).getType()) != "int"){
+								throw new IllegalStateException ("Bad arith operator."); 
+							}							
 							return "int"; 
 						}
 						if (((Op)child2).type == Op.Type.andand || ((Op)child2).type == Op.Type.oror){
@@ -610,6 +622,14 @@ public class IR {
 							if (!((((Expr)child1).getType()).equals("int")) && !((((Expr)child1).getType()).equals("bool"))){
 								throw new IllegalStateException ("Bad eq operator."); 
 							}	
+						}
+						if (((Op)child2).type == Op.Type.less || ((Op)child2).type == Op.Type.greater || ((Op)child2).type == Op.Type.leq || ((Op)child2).type == Op.Type.geq){
+							if ((((Expr)child1).getType()) != "int"){
+								throw new IllegalStateException ("Bad rel operator."); 
+							}
+							if ((((Expr)(members.get(2))).getType()) != "int"){
+								throw new IllegalStateException ("Bad rel operator."); 
+							}							
 						}
 						return "bool";
 					}
