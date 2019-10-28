@@ -109,10 +109,10 @@ function test-should-fail {
   declare -r CODE=$?
 
   case $CODE in
-    0) red "failed to throw a runtime error -- '$(clean $DCF_FILE)'";;
     3) red "your compiler threw an error -- '$(clean $DCF_FILE)'";;
-    1|2) green "successfully threw a runtime error -- '$(clean $DCF_FILE)'";
+    1) green "successfully threw a runtime error -- '$(clean $DCF_FILE)'";
        echo 'TESTCASE-PASS';;
+    *) red "failed to throw a runtime error -- '$(clean $DCF_FILE)'";;
   esac
 }
 
