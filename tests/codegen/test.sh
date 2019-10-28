@@ -48,9 +48,9 @@ function test-runner {
   declare -r EXPECTED_OUTPUT_FILE="$(dirname $(dirname $DCF_FILE))/output/$(basename $DCF_FILE).out"
 
   # temporary files to hold intermediate results
-  declare -r TEMP_ASM=$(mktemp --tmpdir="$TMPDIR" --suffix='.s')
-  declare -r TEMP_BIN=$(mktemp --tmpdir="$TMPDIR")
-  declare -r TEMP_OUT=$(mktemp --tmpdir="$TMPDIR" --suffix='.out')
+  declare -r TEMP_ASM="$TMPDIR/$(basename $DCF_FILE).s"
+  declare -r TEMP_BIN="$TMPDIR/$(basename $DCF_FILE).bin"
+  declare -r TEMP_OUT="$TMPDIR/$(basename $DCF_FILE).out"
 
   # compile to asm
   if dcf-to-asm "$DCF_FILE" "$TEMP_ASM" &> /dev/null; then
@@ -93,6 +93,7 @@ function test-should-pass {
        echo 'TESTCASE-PASS';;
     1) red "threw a runtime error -- '$(clean $DCF_FILE)'";;
     2) red "output doesn't match -- '$(clean $DCF_FILE)";;
+    3) red "your compiler threw an error -- '$(clean $DCF_FILE)'";;
   esac
 }
 
@@ -106,7 +107,8 @@ function test-should-fail {
 
   case $CODE in
     0) red "failed to throw a runtime error -- '$(clean $DCF_FILE)'";;
-    1) green "successfully threw a runtime error -- '$(clean $DCF_FILE)'";
+    3) red "your compiler threw an error -- '$(clean $DCF_FILE)'";;
+    *) green "successfully threw a runtime error -- '$(clean $DCF_FILE)'";
        echo 'TESTCASE-PASS';;
   esac
 }
