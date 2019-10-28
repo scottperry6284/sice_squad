@@ -48,9 +48,11 @@ function test-runner {
   declare -r EXPECTED_OUTPUT_FILE="$(dirname $(dirname $DCF_FILE))/output/$(basename $DCF_FILE).out"
 
   # temporary files to hold intermediate results
-  declare -r TEMP_ASM="$TMPDIR/$(basename $DCF_FILE).s"
-  declare -r TEMP_BIN="$TMPDIR/$(basename $DCF_FILE).bin"
-  declare -r TEMP_OUT="$TMPDIR/$(basename $DCF_FILE).out"
+  mkdir -p "$TMPDIR/$(basename $DCF_FILE)"
+
+  declare -r TEMP_ASM="$TMPDIR/$(basename $DCF_FILE)/main.s"
+  declare -r TEMP_BIN="$TMPDIR/$(basename $DCF_FILE)/main.bin"
+  declare -r TEMP_OUT="$TMPDIR/$(basename $DCF_FILE)/main.out"
 
   # compile to asm
   if dcf-to-asm "$DCF_FILE" "$TEMP_ASM" &> /dev/null; then
@@ -73,6 +75,7 @@ function test-runner {
 
     else
       red "assembly of '$(clean $DCF_FILE)' could not be assembled"
+      red "your assembly looked like '$($TEMP_ASM)'"
     fi
   else
     red "failed to compile '$(clean $DCF_FILE)' to assembly"
@@ -118,7 +121,7 @@ function par {
 }
 
 # directory to hold all temporary values
-declare -r TMPDIR="$ROOT/.dcf-tmp/"
+declare -r TMPDIR="$ROOT/.dcf-tmp"
 
 # functions and globals to use in functions
 export TMPDIR
@@ -140,14 +143,18 @@ build  # calls build.sh
 # kind of making a naive assumption that --max-procs 4 will not cause OOM
 declare -r COUNT_PASS_NO_ERROR=$(
   get-input-files-no-error |
-    par 'test-should-pass {}' |
+    while read f; do
+      test-should-pass "$f"
+    done |
     grep 'TESTCASE-PASS' |
     wc -l
 )
 # number of tests that are supposed to throw an error and passed
 declare -r COUNT_PASS_ERROR=$(
   get-input-files-error |
-    par 'test-should-fail {}' |
+    while read f; do
+      test-should-fail "$f"
+    done |
     grep 'TESTCASE-PASS' |
     wc -l
 )
