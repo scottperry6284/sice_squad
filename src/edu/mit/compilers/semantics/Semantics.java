@@ -138,7 +138,6 @@ public class Semantics{
             if (!(arr instanceof FieldDeclArray)){
                 throw new IllegalStateException ("Bad location array."); 
             }
-            System.out.println("HEHE: " + ((LocationArray)node).index.getType());
             if (((LocationArray)node).index.getType() != "int"){
                 throw new IllegalStateException ("Bad location array."); 
             }
@@ -169,12 +168,7 @@ public class Semantics{
         /* also handles check 19 */
         if (node == null) return; 
         if (node instanceof AssignmentStatement){
-            System.out.println("HAXD");
-            System.out.println(((AssignmentStatement)node).assignExpr != null);
             if ((((AssignmentStatement)node).assignExpr) != null){
-                System.out.println("HEHE");
-                System.out.println(((AssignmentStatement)node).loc.getType());
-                System.out.println(((AssignmentStatement)node).assignExpr.getType());
                 String s1 = ((AssignmentStatement)node).loc.getType(); 
                 String s2 = ((AssignmentStatement)node).assignExpr.getType();
                 if (!(s1.equals("any") || s2.equals("any"))){

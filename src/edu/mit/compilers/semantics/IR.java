@@ -565,7 +565,6 @@ public class IR {
 				}
 				return "any";
 			}
-			System.out.println ("XD: "+ child1);
 			if (child1 instanceof IntLiteral){
 				return "int"; 
 			}

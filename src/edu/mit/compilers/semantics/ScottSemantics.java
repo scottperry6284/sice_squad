@@ -305,7 +305,6 @@ public class ScottSemantics {
             } 
 
         } else if(node instanceof LocationNoArray) {
-            System.out.println("SCOTT LOCATION NO ARRAY");
             LocationNoArray nodeCast = (LocationNoArray) node;
 
             // Check 2: No identifier is used before it is declared.
