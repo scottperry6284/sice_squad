@@ -161,6 +161,7 @@ public class ScottSemantics {
             ForStatement nodeCast = (ForStatement) node; 
 
             // Need to do before checking condition so that I do symbol table populated for loop var.
+            NodeCheck(nodeCast.initLoc, currentScope, methodTable, currentMethod);
             NodeCheck(nodeCast.initExpr, currentScope, methodTable, currentMethod);
            
             // Perform NodeCheck on condition in order to populate its symbol tables.
@@ -295,7 +296,7 @@ public class ScottSemantics {
             } 
 
         } else if(node instanceof LocationNoArray) {
-            
+            System.out.println("SCOTT LOCATION NO ARRAY");
             LocationNoArray nodeCast = (LocationNoArray) node;
 
             // Check 2: No identifier is used before it is declared.

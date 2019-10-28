@@ -565,6 +565,7 @@ public class IR {
 				}
 				return "void";
 			}
+			System.out.println ("XD: "+ child1);
 			if (child1 instanceof IntLiteral){
 				return "int"; 
 			}
@@ -781,12 +782,6 @@ public class IR {
 			return ID;
 		}
 		public String getType() {
-			System.out.println("LOL: " + this.ID); 
-			System.out.println("hi1");
-			System.out.println(this.symbolTable);
-			System.out.println("hi12");
-			System.out.println((FieldDecl)(this.symbolTable.find(this.ID)));
-			System.out.println("hi");
 			if ((this.symbolTable.find(this.ID)) instanceof FieldDeclArray){
 				throw new IllegalStateException("Bad array");
 			}

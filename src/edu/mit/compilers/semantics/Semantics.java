@@ -169,7 +169,12 @@ public class Semantics{
         /* also handles check 19 */
         if (node == null) return; 
         if (node instanceof AssignmentStatement){
-            if (((AssignmentStatement)node).assignExpr != null){
+            System.out.println("HAXD");
+            System.out.println(((AssignmentStatement)node).assignExpr != null);
+            if ((((AssignmentStatement)node).assignExpr) != null){
+                System.out.println("HEHE");
+                System.out.println(((AssignmentStatement)node).loc.getType());
+                System.out.println(((AssignmentStatement)node).assignExpr.getType());
                 if (!(((AssignmentStatement)node).loc.getType().equals(((AssignmentStatement)node).assignExpr.getType()))){
                     throw new IllegalStateException ("Bad assignment."); 
                 }
@@ -187,6 +192,14 @@ public class Semantics{
                     throw new IllegalStateException ("Bad assignment."); 
                 }
             }
+        }
+        if (node instanceof ForStatement){
+            if (((ForStatement)node).initLoc == null || ((ForStatement)node).initExpr == null){
+                throw new IllegalStateException ("Bad assignment."); 
+            }
+            if (!(((ForStatement)node).initLoc.getType().equals(((ForStatement)node).initExpr.getType()))){
+                throw new IllegalStateException ("Bad assignment."); 
+            }    
         }
         List <IR.Node> children = node.getChildren(); 
         if (children == null) return; 
