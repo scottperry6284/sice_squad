@@ -755,8 +755,13 @@ public class IR {
 		public String getText() {
 			return ID;
 		}
-		public String getType(){
+		public String getType() {
 			System.out.println("LOL: " + this.ID); 
+			System.out.println("hi1");
+			System.out.println(this.symbolTable);
+			System.out.println("hi12");
+			System.out.println((FieldDecl)(this.symbolTable.find(this.ID)));
+			System.out.println("hi");
 			return ((FieldDecl)(this.symbolTable.find(this.ID))).type.getName(); 
 		}
 	}

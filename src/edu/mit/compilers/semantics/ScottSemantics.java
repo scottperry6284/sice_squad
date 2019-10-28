@@ -67,7 +67,7 @@ public class ScottSemantics {
                 currentScope.SymbolTableEntries.containsKey(nodeCast.ID)
                 || !methodTable.addMethod(nodeCast)
             ){
-                System.out.println("Method Name Already Declared");
+                throw new IllegalStateException("Method Name Already Declared");
             }
 
             // Create new scope at for the method.
@@ -79,7 +79,7 @@ public class ScottSemantics {
             // TODO: Do I also need to check the method table?
             for(MethodDeclParam param : nodeCast.params) {
                 if(!methodScope.add(param.ID, param)) {
-                    System.out.println("Arguement Already Declared");
+                    throw new IllegalStateException("Arguement Already Declared");
                 }
             }
 
@@ -95,7 +95,7 @@ public class ScottSemantics {
                 nodeCast.methodTable.MethodTableEntries.containsKey(nodeCast.name) 
                 || !methodTable.addImport(nodeCast)
             ) {
-                System.out.println("Import Name Already Declared");
+                throw new IllegalStateException("Import Name Already Declared");
             }
 
         } else if(node instanceof FieldDeclNoArray) {
@@ -108,7 +108,7 @@ public class ScottSemantics {
                 !currentScope.add(nodeCast.ID, nodeCast)
                 || (currentScope.level == 0 && (methodTable.contains(nodeCast.ID)))
             ) {
-                System.out.println("Field Name Already used in Declaration");
+                throw new IllegalStateException("Field Name Already used in Declaration");
             }
 
         } else if(node instanceof FieldDeclArray) {
@@ -118,12 +118,12 @@ public class ScottSemantics {
             // Check that field has not already been declared.
             // TODO: Do I need to check if name in method table?
             if(!currentScope.add(nodeCast.ID, nodeCast)) {
-                System.out.println("Field Already Declared");
+                throw new IllegalStateException("Field Already Declared");
             }
 
             // Check 4: Length in array declaration must be greater than zero.
             if(nodeCast.length <= 0) {
-                System.out.println("Length in array declaration must be greater than zero.");
+                throw new IllegalStateException("Length in array declaration must be greater than zero.");
             }
 
         } else if(node instanceof Block) {
@@ -146,7 +146,9 @@ public class ScottSemantics {
         
             NodeCheck(nodeCast.loc, currentScope, methodTable, currentMethod);
 
-            NodeCheck(nodeCast.assignExpr, currentScope, methodTable, currentMethod);
+            if (nodeCast.assignExpr != null) {
+                NodeCheck(nodeCast.assignExpr, currentScope, methodTable, currentMethod);
+            }
 
         } else if(node instanceof IfStatement) {
             
@@ -157,7 +159,7 @@ public class ScottSemantics {
 
             // Check 14: Check that the type of Expr is Bool
             if (nodeCast.condition.getType() != "bool"){
-                System.out.println("Conditional type must be bool");
+                throw new IllegalStateException("Conditional type must be bool");
             }
 
             // New scope at for the if statement block.
@@ -189,8 +191,8 @@ public class ScottSemantics {
             NodeCheck(nodeCast.condition, currentScope, methodTable, currentMethod);
 
             // Check 14: Check that the type of Expr is Bool
-            if (nodeCast.condition.getType() != "bool"){
-                System.out.println("Conditional type must be bool");
+            if (nodeCast.condition.getType().equals("bool")) {
+                throw new IllegalStateException("Conditional type must be bool");
             }
 
             // New scope at for the for for statement block.
@@ -209,8 +211,8 @@ public class ScottSemantics {
             NodeCheck(nodeCast.condition, currentScope, methodTable, currentMethod);
 
             // Check 14: Check that the type of Expr is Bool
-            if (nodeCast.condition.getType() != "bool"){
-                System.out.println("Conditional type must be bool");
+            if (nodeCast.condition.getType().equals("bool")){
+                throw new IllegalStateException("Conditional type must be bool");
             }
 
             // New scope at for the for for statement block.
@@ -243,7 +245,7 @@ public class ScottSemantics {
             if(
                 currentScope.find(nodeCast.ID) != null || !methodTable.contains(nodeCast.ID)
             ) {
-                System.out.println("Method not Declared");
+                throw new IllegalStateException("Method not Declared");
             }
 
             // Semantic Check 5: The number and types of arguments in a method call (non-imports)
@@ -253,7 +255,7 @@ public class ScottSemantics {
 
                 // Check that number of params equal between method call and method signiture.
                 if (nodeCast.params.size() != methodTable.getMethod(nodeCast.ID).params.size()) {
-                    System.out.println(
+                    throw new IllegalStateException(
                         "Method call has different number of arguements than method signiture."
                     );
                 }
@@ -265,7 +267,7 @@ public class ScottSemantics {
         
                     // Semantic Check 7.
                     if (nodeCast.params.get(i).val instanceof String) {
-                        System.out.println(
+                        throw new IllegalStateException(
                             "String literals may not be used as arguments to non-import methods."
                         );
                     }
@@ -284,7 +286,7 @@ public class ScottSemantics {
                         );
 
                         if (currentScope.find(paramLocationNoArray.ID) instanceof IR.FieldDeclArray) {
-                            System.out.println(
+                            throw new IllegalStateException(
                                 "Array variables may not be used as arguments to non-import methods."
                             );
                         }
@@ -298,14 +300,12 @@ public class ScottSemantics {
                             methodTable.getMethod(nodeCast.ID).params.get(i).type.getName()
                         )
                     ) {
-                        System.out.println(
+                        throw new IllegalStateException(
                             "Type of parameters in method call does not match type of parameters "
                             + "in method signiture"
                         );
                     }
-
                 }
-
             }
         } else if(node instanceof Expr) {
 
@@ -318,11 +318,18 @@ public class ScottSemantics {
 
         } else if(node instanceof LocationNoArray) {
 
+            System.out.println("IN LOCATIONNOARRAY");
+            
             LocationNoArray nodeCast = (LocationNoArray) node;
+
+            System.out.println("ABC123");
+
+            System.out.println(nodeCast.ID);
            
+            System.out.println(nodeCast.symbolTable);
             // Check 2: No identifier is used before it is declared.
             if (currentScope.find(nodeCast.ID) == null){
-                System.out.println("Variable not declared");
+                throw new IllegalStateException("Variable not declared");
             }
 
         } else if(node instanceof LocationArray) {
@@ -331,14 +338,14 @@ public class ScottSemantics {
             
             // Check 2: No identifier is used before it is declared.
             if (currentScope.find(nodeCast.ID) == null){
-                System.out.println("Variable not declared");
+                throw new IllegalStateException("Variable not declared");
             }
             
             NodeCheck(nodeCast.index, currentScope, methodTable, currentMethod);
             // Could put check 12 here.
-        }
+        } else if(node instanceof IR.Op) {
 
-        
+        }      
     }
 
     // Rule 3
@@ -346,7 +353,7 @@ public class ScottSemantics {
         if(root.methodTable.MethodTableEntries.containsKey("main")){
             IR.Node mainMethod = root.methodTable.MethodTableEntries.get("main");
             if(!(mainMethod instanceof MethodDecl)) {
-                System.out.println("main not method");
+                throw new IllegalStateException("main not method");
             }
 
             // Check Return Type.
