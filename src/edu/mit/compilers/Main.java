@@ -106,6 +106,7 @@ token.getType() != DecafParserTokenTypes.EOF;
 	      }
 	      catch(Exception e) {
 	    	  e.printStackTrace();
+          System.exit(1);
 	      }
 	  	}
 	  else if(CLI.target == Action.ASSEMBLY) {

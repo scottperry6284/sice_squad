@@ -787,6 +787,9 @@ public class IR {
 			System.out.println("hi12");
 			System.out.println((FieldDecl)(this.symbolTable.find(this.ID)));
 			System.out.println("hi");
+			if ((this.symbolTable.find(this.ID)) instanceof FieldDeclArray){
+				throw new IllegalStateException("Bad array");
+			}
 			return ((FieldDecl)(this.symbolTable.find(this.ID))).type.getName(); 
 		}
 	}

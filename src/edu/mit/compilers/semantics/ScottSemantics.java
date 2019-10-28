@@ -191,7 +191,7 @@ public class ScottSemantics {
             NodeCheck(nodeCast.condition, currentScope, methodTable, currentMethod);
 
             // Check 14: Check that the type of Expr is Bool
-            if (nodeCast.condition.getType().equals("bool")) {
+            if (!nodeCast.condition.getType().equals("bool")) {
                 throw new IllegalStateException("Conditional type must be bool");
             }
 
@@ -211,7 +211,7 @@ public class ScottSemantics {
             NodeCheck(nodeCast.condition, currentScope, methodTable, currentMethod);
 
             // Check 14: Check that the type of Expr is Bool
-            if (nodeCast.condition.getType().equals("bool")){
+            if (!nodeCast.condition.getType().equals("bool")){
                 throw new IllegalStateException("Conditional type must be bool");
             }
 
