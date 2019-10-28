@@ -175,21 +175,32 @@ public class Semantics{
                 System.out.println("HEHE");
                 System.out.println(((AssignmentStatement)node).loc.getType());
                 System.out.println(((AssignmentStatement)node).assignExpr.getType());
-                if (!(((AssignmentStatement)node).loc.getType().equals(((AssignmentStatement)node).assignExpr.getType()))){
-                    throw new IllegalStateException ("Bad assignment."); 
+                String s1 = ((AssignmentStatement)node).loc.getType(); 
+                String s2 = ((AssignmentStatement)node).assignExpr.getType();
+                if (!(s1.equals("any") || s2.equals("any"))){
+                    if (!(((AssignmentStatement)node).loc.getType().equals(((AssignmentStatement)node).assignExpr.getType()))){
+                        throw new IllegalStateException ("Bad assignment."); 
+                    }
                 }
+
             }
             if ((((AssignmentStatement)node).op.type == Op.Type.minusequals) || (((AssignmentStatement)node).op.type == Op.Type.plusequals)){
-                if (!(((AssignmentStatement)node).loc.getType().equals("int"))){
-                    throw new IllegalStateException ("Bad assignment."); 
-                }
-                if (!(((AssignmentStatement)node).assignExpr.getType().equals("int"))){
-                    throw new IllegalStateException ("Bad assignment."); 
+                String s1 = ((AssignmentStatement)node).loc.getType(); 
+                String s2 = ((AssignmentStatement)node).assignExpr.getType();
+                if (!(s1.equals("any") || s2.equals("any"))){
+                    if (!(((AssignmentStatement)node).loc.getType().equals("int"))){
+                        throw new IllegalStateException ("Bad assignment."); 
+                    }
+                    if (!(((AssignmentStatement)node).assignExpr.getType().equals("int"))){
+                        throw new IllegalStateException ("Bad assignment."); 
+                    }
                 }
             }
             if ((((AssignmentStatement)node).op.type == Op.Type.increment) || (((AssignmentStatement)node).op.type == Op.Type.decrement)){
                 if (!(((AssignmentStatement)node).loc.getType().equals("int"))){
-                    throw new IllegalStateException ("Bad assignment."); 
+                    if (!(((AssignmentStatement)node).loc.getType().equals("any"))){
+                        throw new IllegalStateException ("Bad assignment.");
+                    } 
                 }
             }
         }

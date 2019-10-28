@@ -231,8 +231,8 @@ public class ScottSemantics {
             // Semantic Check 5: The number and types of arguments in a method call (non-imports)
             // must be the same as the number and types of the formals,
             // i.e., the signatures must be identical.
-            if (methodTable.MethodTableEntries.containsKey(nodeCast.ID)) {
 
+            if (methodTable.MethodTableEntries.containsKey(nodeCast.ID)) {
                 // Check that number of params equal between method call and method signiture.
                 if (nodeCast.params.size() != methodTable.getMethod(nodeCast.ID).params.size()) {
                     throw new IllegalStateException(
@@ -242,7 +242,7 @@ public class ScottSemantics {
 
                 // Walk through the arguements in the method call and check that they match
                 // the types of the method parameters.
-
+                
                 for (int i = 0; i < nodeCast.params.size(); i++) {
         
                     // Semantic Check 7.
@@ -251,7 +251,7 @@ public class ScottSemantics {
                             "String literals may not be used as arguments to non-import methods."
                         );
                     }
- 
+                    
                     Expr paramCast = (Expr) nodeCast.params.get(i).val;
 
                     NodeCheck(paramCast, currentScope, methodTable, currentMethod);
@@ -286,6 +286,15 @@ public class ScottSemantics {
                     }
                 }
             }
+            if (methodTable.ImportTableEntries.containsKey(nodeCast.ID)) {
+                for (int i = 0; i < nodeCast.params.size(); i++) {
+                    if ((nodeCast.params.get(i).val) instanceof Expr){
+                        Expr paramCast = (Expr) (nodeCast.params.get(i).val);
+                        NodeCheck(paramCast, currentScope, methodTable, currentMethod);
+                    }
+                }
+            
+            }
         } else if(node instanceof Expr) {
 
             Expr nodeCast = (Expr) node;
@@ -318,5 +327,12 @@ public class ScottSemantics {
         } else if(node instanceof IR.Op) {
 
         }      
+        else if(node instanceof MethodParam) {
+            MethodParam nodeCast = (MethodParam) node;
+            if (nodeCast.val instanceof Expr) {
+                NodeCheck((Expr)(nodeCast.val), currentScope, methodTable, currentMethod);
+            }
+
+        }
     }
 }
