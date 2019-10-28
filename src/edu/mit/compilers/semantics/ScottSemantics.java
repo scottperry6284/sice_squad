@@ -1,37 +1,22 @@
 package edu.mit.compilers.semantics;
 import edu.mit.compilers.semantics.IR.*;
 
-// import java.util.ArrayDeque;
+
 import java.util.ArrayList;
 import java.util.HashMap;
-// import java.util.List;
 import java.util.Queue;
 import java.util.prefs.NodeChangeEvent;
-// import java.util.zip.Adler32;
-
-// import javax.swing.plaf.SliderUI;
 
 import edu.mit.compilers.Utils;
 import java.util.List;
 
 public class ScottSemantics {
-    private boolean errors_reported = false;
 
     public static void RootCheck(IR.Node rootNode) {
 
         IR.Program rootNodeCast = (Program) rootNode;
 
-        // Need to handle issue where there is method global conflict in global scope.
-
         MethodSymbolTable methodTable = new MethodSymbolTable();
-
-        // Check 13: The argument of the len operator must be an array variable,
-        // and it must return an int
-        // TODO: Pre-populate the method table with the len function.
-        // IR.MethodDecl lenFunction = new IR.MethodDecl();
-        // lenFunction.ID = "len";
-        // lenFunction.
-
         SymbolTable symbolTable = new SymbolTable();
         rootNode.methodTable = methodTable;
         rootNode.symbolTable = symbolTable;
@@ -53,11 +38,6 @@ public class ScottSemantics {
                 NodeCheck(childNode, currentScope, methodTable, currentMethod);
             }
 
-        // Check that Main Method Exists since it will be added to the method table.
-        MainDeclared(node);
-
-        // TODO: Check that there are no Double Declarations.
-
         } else if(node instanceof MethodDecl){
             
             IR.MethodDecl nodeCast = (IR.MethodDecl) node;
@@ -76,7 +56,6 @@ public class ScottSemantics {
             methodScope.parent = currentScope;
 
             // Add arguements to symbol table and check for double declaration.
-            // TODO: Do I also need to check the method table?
             for(MethodDeclParam param : nodeCast.params) {
                 if(!methodScope.add(param.ID, param)) {
                     throw new IllegalStateException("Arguement Already Declared");
@@ -90,7 +69,6 @@ public class ScottSemantics {
 
             ImportDecl nodeCast = (ImportDecl) node; 
 
-            // TODO: Do I need to check if import name in symbol table?
             if(
                 nodeCast.methodTable.MethodTableEntries.containsKey(nodeCast.name) 
                 || !methodTable.addImport(nodeCast)
@@ -103,7 +81,6 @@ public class ScottSemantics {
             IR.FieldDeclNoArray nodeCast = (IR.FieldDeclNoArray) node;
 
             // Check that field has not already been declared.
-            // TODO: Do I need to check if name in method table?
             if(
                 !currentScope.add(nodeCast.ID, nodeCast)
                 || (currentScope.level == 0 && (methodTable.contains(nodeCast.ID)))
@@ -116,7 +93,6 @@ public class ScottSemantics {
             IR.FieldDeclArray nodeCast = (IR.FieldDeclArray) node;
             
             // Check that field has not already been declared.
-            // TODO: Do I need to check if name in method table?
             if(!currentScope.add(nodeCast.ID, nodeCast)) {
                 throw new IllegalStateException("Field Already Declared");
             }
@@ -189,6 +165,9 @@ public class ScottSemantics {
            
             // Perform NodeCheck on condition in order to populate its symbol tables.
             NodeCheck(nodeCast.condition, currentScope, methodTable, currentMethod);
+
+            // Perform NodeCheck on condition in order to populate its symbol tables.
+            NodeCheck(nodeCast.iteration, currentScope, methodTable, currentMethod);
 
             // Check 14: Check that the type of Expr is Bool
             if (!nodeCast.condition.getType().equals("bool")) {
@@ -293,7 +272,6 @@ public class ScottSemantics {
                     }
                     
                     // Semantic Check 5.
-                    // TODO: Use enum properly.
 
                     if (
                         !paramCast.getType().equals(
@@ -317,16 +295,9 @@ public class ScottSemantics {
             } 
 
         } else if(node instanceof LocationNoArray) {
-
-            System.out.println("IN LOCATIONNOARRAY");
             
             LocationNoArray nodeCast = (LocationNoArray) node;
 
-            System.out.println("ABC123");
-
-            System.out.println(nodeCast.ID);
-           
-            System.out.println(nodeCast.symbolTable);
             // Check 2: No identifier is used before it is declared.
             if (currentScope.find(nodeCast.ID) == null){
                 throw new IllegalStateException("Variable not declared");
@@ -346,21 +317,5 @@ public class ScottSemantics {
         } else if(node instanceof IR.Op) {
 
         }      
-    }
-
-    // Rule 3
-    private static void MainDeclared(IR.Node root){
-        if(root.methodTable.MethodTableEntries.containsKey("main")){
-            IR.Node mainMethod = root.methodTable.MethodTableEntries.get("main");
-            if(!(mainMethod instanceof MethodDecl)) {
-                throw new IllegalStateException("main not method");
-            }
-
-            // Check Return Type.
-
-
-            // Check that main method has no arguements.
-
-        }
     }
 }
