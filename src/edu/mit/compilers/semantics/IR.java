@@ -861,7 +861,7 @@ public class IR {
 				if(_node instanceof Op) {
 					Op op = (Op)_node;
 					if(op.type == cur) {
-						if(cur==Op.Type.minus && (i==0 || !(expr.members.get(i-1) instanceof Op)))
+						if(cur==Op.Type.minus && (i==0 || (expr.members.get(i-1) instanceof Op)))
 							continue;
 						List<Node> newMembers = new ArrayList<>();
 						Expr e1 = new Expr(expr, expr.line, expr.members.subList(0, i));
@@ -901,11 +901,9 @@ public class IR {
 		if(expr.members.size() == 1) {
 			Node child0 = expr.members.get(0);
 			if(child0 instanceof Expr) {
-				expr.members.clear();
-				for(IR.Node i: ((Expr)child0).members) {
-					expr.members.add(i);
+				expr.members = ((Expr)child0).members;
+				for(IR.Node i: expr.members)
 					i.parent = expr;
-				}
 				fixNesting(expr);
 			}
 		}
