@@ -128,8 +128,7 @@ public class ControlFlow {
 			}
 			else throw new IllegalStateException("Bad statement class " + i.getClass().getCanonicalName());
 		}
-		cur.next = new CFNop(pushScope, -1);
-		cur.next.next = endBlock;
+		cur.next = endBlock;
 		return start;
 	}
 	public CFBranch shortCircuit(IR.Expr condition, CFPushScope scope, CFStatement ifTrue, CFStatement ifFalse) {
