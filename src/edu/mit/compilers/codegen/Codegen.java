@@ -24,9 +24,11 @@ public class Codegen {
 	//TODO: there could be name conflicts if something is called "label" or "globalvar"
 	public ControlFlow CF;
 	public List<Asm> asmOutput;
+	public List<Asm> asmStringOutput;
+	public 
 	public static class Asm {
 		public enum Op { //newline is just whitespace for formatting
-			methodlabel, label, pushq, movq, popq, add, sub, ret, custom, newline, xor, jz, jnz, test, inc, dec, cmp, jmp;
+			methodlabel, label, pushq, movq, popq, add, sub, ret, custom, newline, xor, jz, jnz, test, inc, dec, cmp, jmp, not, neg;
 		}
 		public Op op;
 		public String arg1, arg2;
@@ -185,15 +187,60 @@ public class Codegen {
 			}
 		}
 		else if(CFS instanceof CFMethodCall) {
-			asmOutput.add(new Asm(Asm.Op.custom, "CFMethodCall"));
 			CFMethodCall CFMC = (CFMethodCall)CFS;
+			
 			if(CF.importMethods.containsKey(CFMC.ID)) {
 				
 			}
 			else if(CF.methods.containsKey(CFMC.ID)) {
-				
+
+				asmOutput.add(new Asm(Asm.Op.custom, "CFMethodCall"));
+
+				// Build assembly instructions for the params.
+				for (Object param: params) {
+					// Check if param is a string.
+
+					// Put all of the strings in a seperate list.
+					if (param instanceof String) {
+						// Create Tag.
+
+						asmStringOutput.add(new Asm(Asm.Op.pushq, label);
+
+						asmOutput.add(new Asm(Asm.Op.pushq, param.));
+						// Do .string instruction
+
+						// align the memory.
+
+
+					}
+					else if (param instanceof IR.BoolLiteral) {
+						IR.BoolLiteral paramCast = (IR.BoolLiteral) param;
+						if (paramCast.value) {
+							asmOutput.add(new Asm(Asm.Op.pushq, "$1"));
+						} else {
+							asmOutput.add(new Asm(Asm.Op.pushq, "$0"));
+						}
+					}
+
+					else if (param instanceof IR.IntLiteral) {
+						IR.IntLiteral paramCast = (IR.IntLiteral) param;
+						asmOutput.add(new Asm(Asm.Op.pushq, "$" + paramCast.getText()));
+					}
+
+					else { // Must be a literial I can look up in the Symbol Table.
+						// Push to stack.
+						asmOutput.add(new Asm(Asm.Op.jmp, CFMC.ID));
+
+					}
+				}
+
+				// Jump to method's location.
+				asmOutput.add(new Asm(Asm.Op.jmp, CFMC.ID));
+
 			}
-			else throw new IllegalStateException("Unknown method ID: " + CFMC.ID);
+			else {
+				throw new IllegalStateException("Unknown method ID: " + CFMC.ID);
+			}
 		}
 		else if(CFS instanceof CFReturn) {
 			asmOutput.add(new Asm(Asm.Op.custom, "CFReturn"));
