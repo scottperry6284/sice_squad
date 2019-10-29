@@ -17,7 +17,7 @@ public class IR {
 	public IR(ParseTree parseTree) {
 		this.parseTree = parseTree;
 	}
-	public static class IRTraverser {
+	private static class IRTraverser {
 		private Queue<IR.Node> nodes;
 		public IRTraverser(IR ir) {
 			nodes = new ArrayDeque<>();
@@ -154,7 +154,6 @@ public class IR {
 	}
 	public class ImportDecl extends IR.Node {
 		public String name;
-		public IRType type;
 		public ImportDecl(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
 			expectType(node, ParseTree.Node.Type.AST_import_decl);
@@ -587,7 +586,7 @@ public class IR {
 		}
 		public IRType getT() {
 			String stype = getType();
-			if(stype.equals("int"))
+			if(stype.equals("int") || stype.equals("any"))
 				return IRType.int_;
 			else if(stype.equals("bool"))
 				return IRType.bool_;
@@ -786,10 +785,10 @@ public class IR {
 	}
 	public abstract static class Location extends IR.Node {
 		public String ID;
-		public Location(IR.Node parent, ParseTree.Node node) {
+		protected Location(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
 		}
-		public Location(IR.Node parent, int line) {
+		protected Location(IR.Node parent, int line) {
 			super(parent, line);
 		}
 		public static Location create(IR.Node parent, ParseTree.Node node) {
@@ -854,10 +853,10 @@ public class IR {
 		}
 	}
 	public abstract static class Literal extends IR.Node {
-		public Literal(IR.Node parent, ParseTree.Node node) {
+		protected Literal(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
 		}
-		public Literal(IR.Node parent, int line) {
+		protected Literal(IR.Node parent, int line) {
 			super(parent, line);
 		}
 	}
@@ -989,38 +988,119 @@ public class IR {
 		}
 		return tempExpr.get(expr);
 	}
-	private List<Statement> extractMethodCallsFromExpr(Block block, Expr inputExpr) {
-		List<Statement> res = new ArrayList<>();
-		Queue<IR.Node> q = new ArrayDeque<>();
-		q.add(inputExpr);
-		while(!q.isEmpty()) {
-			IR.Node node = q.poll();
-			if(node instanceof Expr) {
-				Expr e = (Expr)node;
-				for(int i=0; i<e.members.size(); i++) {
-					IR.Node member = e.members.get(i);
-					if(member instanceof MethodCall) {
-						//LocationNoArray tempLoc = nodeToTempVar(block, member);
-						//res.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, new Expr(e, e.line, member)));
-						//e.members.set(i, tempLoc);
+	private void separateCallsAndExpr(Block blockpar, IR.Node parent, List<Statement> statements) {
+		for(int i=0; i<statements.size(); i++) {
+			Statement st = statements.get(i);
+			List<Statement> toAdd = new ArrayList<>();
+			Queue<Statement> toProcess = new ArrayDeque<>();
+			Statement orig = null;
+			if((st instanceof AssignmentStatement) || (st instanceof MethodCall)) {
+				orig = st;
+				toProcess.add(st);
+			}
+			while(!toProcess.isEmpty()) {
+				Statement statement = toProcess.poll();
+				if(statement != orig)
+					toAdd.add(statement);
+				if(statement instanceof MethodCall) {
+					MethodCall MC = (MethodCall)statement;
+					for(int j=0; j<MC.params.size(); j++) {
+						MethodParam param = MC.params.get(j);
+						if(param.val instanceof Expr) {
+							Expr e = (Expr)param.val;
+							if(!isAtomicExpr(e)) {
+								LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
+								AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
+								param.val = new Expr(parent, parent.line, t);
+								toProcess.add(a0);
+							}
+						}
 					}
-					else q.add(member);
+				}
+				else {
+					AssignmentStatement AS = (AssignmentStatement)statement;
+					Expr expr = AS.assignExpr;
+					if(expr.members.size()==1 && !isBasicExpr(expr)) { //it's a method call with non-atomic parameters
+						MethodCall MC = (MethodCall)expr.members.get(0);
+						for(int j=0; j<MC.params.size(); j++) {
+							MethodParam param = MC.params.get(j);
+							if(param.val instanceof Expr) {
+								Expr e = (Expr)param.val;
+								if(!isAtomicExpr(e)) {
+									LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
+									AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
+									param.val = new Expr(parent, parent.line, t);
+									toProcess.add(a0);
+								}
+							}
+						}
+					}
+					else {
+						Queue<Expr> q = new ArrayDeque<>();
+						q.add(expr);
+						while(!q.isEmpty()) {
+							Expr e = q.poll();
+							if(e.members.size() == 3) {
+								Expr child0 = (Expr)e.members.get(0);
+								if(child0.members.size()==1 && (child0.members.get(0) instanceof MethodCall)) {	
+									LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
+									AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
+									e.members.set(0, new Expr(parent, parent.line, t0));
+									toProcess.add(a0);
+								}
+								else q.add(child0);
+								Expr child2 = (Expr)e.members.get(2);
+								if(child2.members.size()==1 && (child2.members.get(0) instanceof MethodCall)) {
+									LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
+									AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
+									e.members.set(2, new Expr(parent, parent.line, t2));
+									toProcess.add(a2);
+								}
+								else q.add(child2);
+							}
+							else if(e.members.size() == 2) {
+								Expr child1 = (Expr)e.members.get(1);
+								if(child1.members.size()==1 && (child1.members.get(0) instanceof MethodCall)) {
+									LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
+									AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
+									e.members.set(0, new Expr(parent, parent.line, t1));
+									toProcess.add(a1);
+								}
+								else q.add(child1);
+							}
+							else if(e.members.size() == 1) {
+								
+							}
+							else throw new IllegalStateException("Expr has bad size, size = " + e.members.size());
+						}
+					}
 				}
 			}
+			Collections.reverse(toAdd);
+			statements.addAll(i, toAdd);
+			i += toAdd.size();
 		}
-		return res;
 	}
 	//return true if expr cannot be broken up further;
 	private boolean isAtomicExpr(Expr expr) {
-		return expr.members.size()==1 && (
+		return     expr.members.size()==1 && (
 				 ((expr.members.get(0) instanceof Location) ||
 				  (expr.members.get(0) instanceof Literal)));
 	}
 	//returns true if expr can be directly computed in assembly ((Atomic op Atomic) or (op Atomic) or Atomic)
 	private boolean isBasicExpr(Expr expr) {
-		return isAtomicExpr(expr) || 
+		if(	   isAtomicExpr(expr) || 
 			  (expr.members.size()==2 && isAtomicExpr((Expr)expr.members.get(1))) ||
-			  (expr.members.size()==3 && isAtomicExpr((Expr)expr.members.get(0)) && isAtomicExpr((Expr)expr.members.get(2)));
+			  (expr.members.size()==3 && isAtomicExpr((Expr)expr.members.get(0)) && isAtomicExpr((Expr)expr.members.get(2))))
+			return true;
+		
+		if(expr.members.size()==1 && (expr.members.get(0) instanceof MethodCall)) {
+			for(MethodParam param: ((MethodCall)expr.members.get(0)).params)
+				if((param.val instanceof Expr) && !isAtomicExpr((Expr)param.val))
+					return false;
+			return true;
+		}
+		return false;
 	}
 	private void fragmentExpr(Block blockpar, IR.Node parent, List<Statement> statements) {
 		for(int i=0; i<statements.size(); i++) {
@@ -1116,39 +1196,18 @@ public class IR {
 		}
 		
 		//extract method calls from exprs and exprs from method calls
-		//keep doing this until no more changes occur
-		/*boolean changed = true;
-		while(changed) {
-			changed = false;
-			for(int i=0; i<block.statements.size(); i++) {
-				Statement st = block.statements.get(i);
-				List<Statement> toAdd = new ArrayList<>();
-				if(st instanceof AssignmentStatement) {
-					AssignmentStatement AS = (AssignmentStatement)st;
-					toAdd = extractMethodCallsFromExpr(block, AS.assignExpr);
-				}
-				else if(st instanceof ForStatement) {
-				}
-				else if(st instanceof WhileStatement) {
-				}
-				else if(st instanceof MethodCall) {
-					MethodCall MC = (MethodCall)st;
-					for(MethodParam param: MC.params) {
-						if(param.val instanceof Expr) {
-							Expr expr = (Expr)param.val;
-							LocationNoArray tempLoc = nodeToTempVar(block, expr.getT(), expr);
-							toAdd.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, expr));
-							param.val = new Expr(block, block.line, tempLoc);
-						}
-					}
-				}
-				if(toAdd.size() > 0) {
-					changed = true;
-					block.statements.addAll(i, toAdd);
-					i += toAdd.size();
-				}
+		separateCallsAndExpr(block, block, block.statements);
+		for(int i=0; i<block.statements.size(); i++) {
+			Statement st = block.statements.get(i);
+			if(st instanceof ForStatement) {
+				ForStatement FOR = (ForStatement)st;
+				separateCallsAndExpr(block, FOR, FOR.calcCondition);
 			}
-		}*/
+			else if(st instanceof WhileStatement) {
+				WhileStatement WHILE = (WhileStatement)st;
+				separateCallsAndExpr(block, WHILE, WHILE.calcCondition);
+			}
+		}
 		
 		//fragment exprs so every operation is easy translated to assembly
 		fragmentExpr(block, block, block.statements);

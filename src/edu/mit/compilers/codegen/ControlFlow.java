@@ -72,41 +72,58 @@ public class ControlFlow {
 				cur = cur.next;
 			}
 			else if(i instanceof IR.IfStatement) {
+				IR.IfStatement IF = (IR.IfStatement)i;
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
-				IR.IfStatement ifS = (IR.IfStatement)i;
-				CFContainer sC = new CFContainer(pushScope, i.line);
-				if(ifS.elseBlock == null)
-					sC.start = shortCircuit(ifS.condition, pushScope, makeBlock(ifS.block, pushScope, end, breakCFS, continueCFS), end);
-				else sC.start = shortCircuit(ifS.condition, pushScope, makeBlock(ifS.block, pushScope, end, breakCFS, continueCFS),
-								makeBlock(ifS.elseBlock, pushScope, end, breakCFS, continueCFS));
-				cur.next = sC;
-				sC.next = end;
+				
+				CFContainer box = new CFContainer(pushScope, i.line);
+				if(IF.elseBlock == null)
+					box.start = shortCircuit(IF.condition, pushScope, makeBlock(IF.block, pushScope, end, breakCFS, continueCFS), end);
+				else box.start = shortCircuit(IF.condition, pushScope, makeBlock(IF.block, pushScope, end, breakCFS, continueCFS),
+								makeBlock(IF.elseBlock, pushScope, end, breakCFS, continueCFS));
+				cur.next = box;
+				box.next = end;
 				cur = end;
 			}
 			else if(i instanceof IR.WhileStatement) {
+				IR.WhileStatement WHILE = (IR.WhileStatement)i;
 				cur.next = new CFNop(pushScope, i.line);
 				cur = cur.next;
+				CFStatement loopBackTo = cur;
+				if(WHILE.calcCondition != null) {
+					for(IR.Statement statement: WHILE.calcCondition) {
+						IR.AssignmentStatement AS = (IR.AssignmentStatement)statement;
+						cur.next = new CFAssignment(pushScope, AS.line, AS);
+						cur = cur.next;
+					}
+				}
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
-				IR.WhileStatement wS = (IR.WhileStatement)i;
-				CFContainer sC = new CFContainer(pushScope, i.line);
-				sC.start = shortCircuit(wS.condition, pushScope, makeBlock(wS.block, pushScope, cur, end, cur), end);
-				cur.next = sC;
-				sC.next = end;
+				CFContainer box = new CFContainer(pushScope, i.line);
+				box.start = shortCircuit(WHILE.condition, pushScope, makeBlock(WHILE.block, pushScope, loopBackTo, end, loopBackTo), end);
+				cur.next = box;
+				box.next = end;
 				cur = end;
 			}
 			else if(i instanceof IR.ForStatement) {
-				IR.ForStatement fS = (IR.ForStatement)i;
-				cur.next = new CFAssignment(pushScope, i.line, fS.initLoc, fS.initExpr);
+				IR.ForStatement FOR = (IR.ForStatement)i;
+				cur.next = new CFAssignment(pushScope, i.line, FOR.initLoc, FOR.initExpr);
 				cur = cur.next;
 				cur.next = new CFNop(pushScope, i.line);
 				cur = cur.next;
+				CFStatement loopBackTo = cur;
+				if(FOR.calcCondition != null) {
+					for(IR.Statement statement: FOR.calcCondition) {
+						IR.AssignmentStatement AS = (IR.AssignmentStatement)statement;
+						cur.next = new CFAssignment(pushScope, AS.line, AS);
+						cur = cur.next;
+					}
+				}
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
-				CFAssignment iteration = new CFForAssignment(pushScope, i.line, fS.iteration);
-				iteration.next = cur;
-				CFContainer sC = new CFContainer(pushScope, i.line);
-				sC.start = shortCircuit(fS.condition, pushScope, makeBlock(fS.block, pushScope, iteration, end, iteration), end);
-				cur.next = sC;
-				sC.next = end;
+				CFAssignment iteration = new CFForAssignment(pushScope, i.line, FOR.iteration);
+				iteration.next = loopBackTo;
+				CFContainer box = new CFContainer(pushScope, i.line);
+				box.start = shortCircuit(FOR.condition, pushScope, makeBlock(FOR.block, pushScope, iteration, end, iteration), end);
+				cur.next = box;
+				box.next = end;
 				cur = end;
 			}
 			else if(i instanceof IR.BreakStatement) {
