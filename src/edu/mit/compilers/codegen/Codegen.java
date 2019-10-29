@@ -15,7 +15,7 @@ import edu.mit.compilers.codegen.ControlFlow.CFMethodCall;
 import edu.mit.compilers.codegen.ControlFlow.CFNop;
 import edu.mit.compilers.codegen.ControlFlow.CFPushScope;
 import edu.mit.compilers.codegen.ControlFlow.CFReturn;
-import edu.mit.compilers.codegen.ControlFlow.CFShortCircuit;
+import edu.mit.compilers.codegen.ControlFlow.CFContainer;
 import edu.mit.compilers.codegen.ControlFlow.CFStatement;
 import edu.mit.compilers.semantics.IR;
 import edu.mit.compilers.semantics.IR.Op;
@@ -208,7 +208,7 @@ public class Codegen {
 		else if(CFS instanceof CFNop) {
 
 		}
-		else if(CFS instanceof CFShortCircuit) {
+		else if(CFS instanceof CFContainer) {
 			return;
 		}
 		else throw new IllegalStateException("Unexpected CFS type: " + CFS.getClass().getCanonicalName());
@@ -235,8 +235,8 @@ public class Codegen {
 			return;
 		CFS.orderpos = CFOrder.size();
 		CFOrder.add(CFS);
-		if(CFS instanceof CFShortCircuit) {
-			CFShortCircuit CFSC = (CFShortCircuit)CFS;
+		if(CFS instanceof CFContainer) {
+			CFContainer CFSC = (CFContainer)CFS;
 			genCFOrder(CFSC.start, (CFMergeBranch)CFSC.next);
 			genCFOrder(CFSC.next, stop);
 			return;

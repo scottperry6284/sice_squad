@@ -77,7 +77,7 @@ public class ControlFlow {
 			else if(i instanceof IR.IfStatement) {
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
 				IR.IfStatement ifS = (IR.IfStatement)i;
-				CFShortCircuit sC = new CFShortCircuit(pushScope, i.line);
+				CFContainer sC = new CFContainer(pushScope, i.line);
 				if(ifS.elseBlock == null)
 					sC.start = shortCircuit(ifS.condition, pushScope, makeBlock(ifS.block, pushScope, end, breakCFS, continueCFS), end);
 				else sC.start = shortCircuit(ifS.condition, pushScope, makeBlock(ifS.block, pushScope, end, breakCFS, continueCFS),
@@ -91,7 +91,7 @@ public class ControlFlow {
 				cur = cur.next;
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
 				IR.WhileStatement wS = (IR.WhileStatement)i;
-				CFShortCircuit sC = new CFShortCircuit(pushScope, i.line);
+				CFContainer sC = new CFContainer(pushScope, i.line);
 				sC.start = shortCircuit(wS.condition, pushScope, makeBlock(wS.block, pushScope, cur, end, cur), end);
 				cur.next = sC;
 				sC.next = end;
@@ -106,7 +106,7 @@ public class ControlFlow {
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
 				CFAssignment iteration = new CFForAssignment(pushScope, i.line, fS.iteration);
 				iteration.next = cur;
-				CFShortCircuit sC = new CFShortCircuit(pushScope, i.line);
+				CFContainer sC = new CFContainer(pushScope, i.line);
 				sC.start = shortCircuit(fS.condition, pushScope, makeBlock(fS.block, pushScope, iteration, end, iteration), end);
 				cur.next = sC;
 				sC.next = end;
@@ -197,9 +197,9 @@ public class ControlFlow {
 			super(scope, line);
 		}
 	}
-	public class CFShortCircuit extends CFStatement {
+	public class CFContainer extends CFStatement {
 		public CFStatement start;
-		public CFShortCircuit(CFPushScope scope, int line) {
+		public CFContainer(CFPushScope scope, int line) {
 			super(scope, line);
 		}
 	}
@@ -317,8 +317,8 @@ public class ControlFlow {
 		if(CFS==null || CFS==stop)
 			return;
 		
-		else if(CFS instanceof CFShortCircuit) {
-			CFShortCircuit CFSC = (CFShortCircuit)CFS;
+		else if(CFS instanceof CFContainer) {
+			CFContainer CFSC = (CFContainer)CFS;
 			CFSC.start = breakUpCFSExpr(CFSC.start);
 			CFSC.next = breakUpCFSExpr(CFSC.next);
 			postprocessExpr(CFSC.start, CFSC.next);
