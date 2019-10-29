@@ -153,6 +153,7 @@ public class IR {
 	}
 	public class ImportDecl extends IR.Node {
 		public String name;
+		public IRType type;
 		public ImportDecl(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
 			expectType(node, ParseTree.Node.Type.AST_import_decl);
@@ -196,6 +197,7 @@ public class IR {
 		public FieldDeclNoArray(IR.Node parent, int line, LocationNoArray loc) {
 			super(parent, line);
 			this.ID = loc.ID;
+			type = loc.getT();
 		}
 		public String getText() {
 			return type.getName() + " " + ID;
@@ -582,6 +584,14 @@ public class IR {
 			children.addAll(members);
 			return children;
 		}
+		public IRType getT() {
+			String stype = getType();
+			if(stype.equals("int"))
+				return IRType.int_;
+			else if(stype.equals("bool"))
+				return IRType.bool_;
+			else throw new IllegalStateException("bad type " + stype);
+		}
 		public String getType (){
 			// NOTE: DO NOT CALL THIS FUNCTION UNTIL AFTER THE IR IS FINISHED BUILDING
 
@@ -827,6 +837,14 @@ public class IR {
 		public String getText() {
 			return ID;
 		}
+		public IRType getT() {
+			String stype = getType();
+			if(stype.equals("int"))
+				return IRType.int_;
+			else if(stype.equals("bool"))
+				return IRType.bool_;
+			else throw new IllegalStateException("bad type " + stype);
+		}
 		public String getType() {
 			if ((this.symbolTable.find(this.ID)) instanceof FieldDeclArray){
 				throw new IllegalStateException("Bad array");
@@ -963,7 +981,7 @@ public class IR {
 		}
 	}
 	private Map<IR.Node, LocationNoArray> tempExpr;
-	public LocationNoArray nodeToTempVar(Block block, IR.Node node) {
+	public LocationNoArray nodeToTempVar(Block block, IRType type, IR.Node node) {
 		if(!tempExpr.containsKey(node)) {
 			LocationNoArray loc = new LocationNoArray(block, block.line, "@temp" + tempExpr.size());
 			block.fields.add(new FieldDeclNoArray(block, block.line, loc));
@@ -982,9 +1000,9 @@ public class IR {
 				for(int i=0; i<e.members.size(); i++) {
 					IR.Node member = e.members.get(i);
 					if(member instanceof MethodCall) {
-						LocationNoArray tempLoc = nodeToTempVar(block, member);
-						res.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, new Expr(e, e.line, member)));
-						e.members.set(i, tempLoc);
+						//LocationNoArray tempLoc = nodeToTempVar(block, member);
+						//res.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, new Expr(e, e.line, member)));
+						//e.members.set(i, tempLoc);
 					}
 					else q.add(member);
 				}
@@ -999,37 +1017,26 @@ public class IR {
 			List<Statement> toAdd = new ArrayList<>();
 			if(st instanceof AssignmentStatement) {
 				AssignmentStatement AS = (AssignmentStatement)st;
-				LocationNoArray tempLoc = nodeToTempVar(block, AS.assignExpr);
+				LocationNoArray tempLoc = nodeToTempVar(block, AS.assignExpr.getT(), AS.assignExpr);
 				toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, AS.assignExpr));
 				AS.assignExpr = new Expr(block, block.line, tempLoc);
 			}
-			else if(st instanceof MethodCall) {
-				MethodCall MC = (MethodCall)st;
-				for(MethodParam param: MC.params) {
-					if(param.val instanceof Expr) {
-						Expr expr = (Expr)param.val;
-						LocationNoArray tempLoc = nodeToTempVar(block, expr);
-						toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, expr));
-						param.val = new Expr(block, block.line, tempLoc);
-					}
-				}
-			}
 			else if(st instanceof IfStatement) {
 				IfStatement IF = (IfStatement)st;
-				LocationNoArray tempLoc = nodeToTempVar(block, IF.condition);
+				LocationNoArray tempLoc = nodeToTempVar(block, IF.condition.getT(), IF.condition);
 				toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, IF.condition));
 				IF.condition = new Expr(block, block.line, tempLoc);
 			}
 			else if(st instanceof ForStatement) {
 				ForStatement FOR = (ForStatement)st;
-				LocationNoArray tempLoc = nodeToTempVar(block, FOR.condition);
+				LocationNoArray tempLoc = nodeToTempVar(block, FOR.condition.getT(), FOR.condition);
 				FOR.calcCondition = new ArrayList<>();
 				FOR.calcCondition.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, FOR.condition));
 				FOR.condition = new Expr(block, block.line, tempLoc);
 			}
 			else if(st instanceof WhileStatement) {
 				WhileStatement WHILE = (WhileStatement)st;
-				LocationNoArray tempLoc = nodeToTempVar(block, WHILE.condition);
+				LocationNoArray tempLoc = nodeToTempVar(block, WHILE.condition.getT(), WHILE.condition);
 				WHILE.calcCondition = new ArrayList<>();
 				WHILE.calcCondition.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, WHILE.condition));
 				WHILE.condition = new Expr(block, block.line, tempLoc);
@@ -1037,7 +1044,7 @@ public class IR {
 			else if(st instanceof ReturnStatement) {
 				ReturnStatement RET = (ReturnStatement)st;
 				if(RET.expr != null) {
-					LocationNoArray tempLoc = nodeToTempVar(block, RET.expr);
+					LocationNoArray tempLoc = nodeToTempVar(block, RET.expr.getT(), RET.expr);
 					toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, RET.expr));
 					RET.expr = new Expr(block, block.line, tempLoc);
 				}
@@ -1046,20 +1053,36 @@ public class IR {
 			i += toAdd.size();
 		}
 		
-		/*//extract method calls from exprs
-		for(int i=0; i<block.statements.size(); i++) {
-			Statement st = block.statements.get(i);
-			List<Statement> toAdd = new ArrayList<>();
-			if(st instanceof AssignmentStatement) {
-				AssignmentStatement AS = (AssignmentStatement)st;
-				toAdd = extractMethodCallsFromExpr(block, AS.assignExpr);
+		//extract method calls from exprs
+		/*boolean changed = true;
+		while(changed) {
+			changed = false;
+			for(int i=0; i<block.statements.size(); i++) {
+				Statement st = block.statements.get(i);
+				List<Statement> toAdd = new ArrayList<>();
+				if(st instanceof AssignmentStatement) {
+					AssignmentStatement AS = (AssignmentStatement)st;
+					toAdd = extractMethodCallsFromExpr(block, AS.assignExpr);
+				}
+				else if(st instanceof MethodCall) {
+					MethodCall MC = (MethodCall)st;
+					for(MethodParam param: MC.params) {
+						if(param.val instanceof Expr) {
+							Expr expr = (Expr)param.val;
+							LocationNoArray tempLoc = nodeToTempVar(block, expr.getT(), expr);
+							toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, expr));
+							param.val = new Expr(block, block.line, tempLoc);
+						}
+					}
+				}
+				if(toAdd.size() > 0) {
+					changed = true;
+					block.statements.addAll(i, toAdd);
+					i += toAdd.size();
+				}
 			}
-			
-			block.statements.addAll(i, toAdd);
-			i += toAdd.size();
-		}
-		
-		//fragment exprs*/
+		}*/
+		//fragment exprs
 	}
 	private void postprocess() {
 		IRTraverser irTraverser = new IRTraverser(this);
@@ -1071,9 +1094,10 @@ public class IR {
 				fixNesting(expr);
 			}
 		}
-		
+	}
+	public void simplifyExpr() { //CALL AFTER SEMANTICS
 		tempExpr = new HashMap<>();
-		irTraverser = new IRTraverser(this);
+		IRTraverser irTraverser = new IRTraverser(this);
 		List<Block> blocks = new ArrayList<>();;
 		while(irTraverser.hasNext()) {
 			IR.Node _node = irTraverser.getNext();
