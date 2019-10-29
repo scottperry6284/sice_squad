@@ -55,14 +55,14 @@ function test-runner {
   declare -r TEMP_OUT="$TMPDIR/$(basename $DCF_FILE)/main.out"
 
   # compile to asm
-  dcf-to-asm "$DCF_FILE" "$TEMP_ASM" >&2
+  dcf-to-asm "$DCF_FILE" "$TEMP_ASM" &> /dev/null
   if [[ $? -eq 0 ]]; then
     # compile to executable
-    asm-to-exec "$TEMP_ASM" "$TEMP_BIN" >&2
+    asm-to-exec "$TEMP_ASM" "$TEMP_BIN" &> /dev/null
     if [[ $? -eq 0 ]]; then
 
       # execute binary, save output and exit code
-      "$TEMP_BIN" > "$TEMP_OUT"
+      "$TEMP_BIN" > "$TEMP_OUT" 2> /dev/null
       if [[ $? -eq 0 ]]; then
         if diff "$EXPECTED_OUTPUT_FILE" "$TEMP_OUT" &> /dev/null ; then
           return 0  # everything is well
@@ -97,7 +97,7 @@ function test-should-pass {
        echo 'TESTCASE-PASS';;
     1) red "threw a runtime error -- '$(clean $DCF_FILE)'";;
     2) red "output doesn't match -- '$(clean $DCF_FILE)";;
-    3) red "your compiler threw an error -- '$(clean $DCF_FILE)'";;
+    3) red "compiler threw an error -- '$(clean $DCF_FILE)'";;
   esac
 }
 
