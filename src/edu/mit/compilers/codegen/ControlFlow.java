@@ -56,10 +56,7 @@ public class ControlFlow {
 		public CFMethod(IR.Node _node) {
 			super(null, _node.line);
 			IR.MethodDecl node = (IR.MethodDecl)_node;
-			for(IR.MethodDeclParam i: node.params) {
-				variables.put(i.ID, new VarSym(i.type, 0, stackOffset));
-				stackOffset += wordSize;
-			}
+			addFieldsMethodParams(node.params);
 			CFEndMethod end = new CFEndMethod(this, -1);
 			next = makeBlock(node.block, this, end, null, null);
 		}
@@ -230,6 +227,12 @@ public class ControlFlow {
 					variables.put(i.ID, new VarSym(i.type, 0, stackOffset));
 					stackOffset += wordSize;
 				}
+			}
+		}
+		public void addFieldsMethodParams(List<IR.MethodDeclParam> params) {
+			for(IR.MethodDeclParam i: params) {
+				variables.put(i.ID, new VarSym(i.type, 0, stackOffset));
+				stackOffset += wordSize;
 			}
 		}
 	}
