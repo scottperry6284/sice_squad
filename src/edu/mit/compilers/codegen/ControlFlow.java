@@ -11,7 +11,7 @@ import edu.mit.compilers.semantics.IR;
 
 public class ControlFlow {
 	public IR ir;
-	public Program program;
+	public CFProgram program;
 	public final static long wordSize = 16; //TODO: bools and ints are currently the same size
 	public ControlFlow(IR ir) {
 		this.ir = ir;
@@ -40,8 +40,8 @@ public class ControlFlow {
 	public class ImportMethodSym {}
 	public Map<String, MethodSym> methods;
 	public Map<String, ImportMethodSym> importMethods;
-	public class Program extends CFPushScope {
-		public Program(IR.Node _node) {
+	public class CFProgram extends CFPushScope {
+		public CFProgram(IR.Node _node) {
 			super(null, _node.line);
 			IR.Program node = (IR.Program)_node;
 			for(IR.ImportDecl i: node.imports)
@@ -339,7 +339,7 @@ public class ControlFlow {
 	public void build() {
 		methods = new LinkedHashMap<>();
 		importMethods = new LinkedHashMap<>();
-		program = new Program(ir.root);
+		program = new CFProgram(ir.root);
 		tempExprCount = 0;
 		
 		tempExpr = new HashMap<>();
