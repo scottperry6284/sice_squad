@@ -55,16 +55,16 @@ function test-runner {
   declare -r TEMP_OUT="$TMPDIR/$(basename $DCF_FILE)/main.out"
 
   # compile to asm
-  if dcf-to-asm "$DCF_FILE" "$TEMP_ASM" &> /dev/null; then
+  dcf-to-asm "$DCF_FILE" "$TEMP_ASM" >&2
+  if [[ $? -eq 0 ]]; then
     # compile to executable
-    if asm-to-exec "$TEMP_ASM" "$TEMP_BIN" &> /dev/null; then
+    asm-to-exec "$TEMP_ASM" "$TEMP_BIN" >&2
+    if [[ $? -eq 0 ]]; then
 
       # execute binary, save output and exit code
-      "$TEMP_BIN" > "$TEMP_OUT" 2> /dev/null
-      declare -r CODE=$?
-
-      if [[ $CODE -eq 0 ]]; then
-        if diff "$EXPECTED_OUTPUT_FILE" "$TEMP_OUT" &> /dev/null; then
+      "$TEMP_BIN" > "$TEMP_OUT"
+      if [[ $? -eq 0 ]]; then
+        if diff "$EXPECTED_OUTPUT_FILE" "$TEMP_OUT" &> /dev/null ; then
           return 0  # everything is well
         else
           return 2  # output mismatch probably
@@ -75,7 +75,8 @@ function test-runner {
 
     else
       red "assembly of '$(clean $DCF_FILE)' could not be assembled"
-      red "your assembly looked like '$($TEMP_ASM)'"
+      red "your assembly looked like"
+      cat "$TEMP_ASM" >&2
     fi
   else
     red "failed to compile '$(clean $DCF_FILE)' to assembly"
