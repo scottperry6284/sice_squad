@@ -988,7 +988,7 @@ public class IR {
 		}
 		return tempExpr.get(expr);
 	}
-	private void separateCallsAndExpr(Block blockpar, IR.Node parent, List<Statement> statements) {
+	private void separateCallsAndExprAndArray(Block blockpar, IR.Node parent, List<Statement> statements) {
 		for(int i=0; i<statements.size(); i++) {
 			Statement st = statements.get(i);
 			List<Statement> toAdd = new ArrayList<>();
@@ -1020,19 +1020,29 @@ public class IR {
 				else {
 					AssignmentStatement AS = (AssignmentStatement)statement;
 					Expr expr = AS.assignExpr;
-					if(expr.members.size()==1 && !isBasicExpr(expr)) { //it's a method call with non-atomic parameters
-						MethodCall MC = (MethodCall)expr.members.get(0);
-						for(int j=0; j<MC.params.size(); j++) {
-							MethodParam param = MC.params.get(j);
-							if(param.val instanceof Expr) {
-								Expr e = (Expr)param.val;
-								if(!isAtomicExpr(e)) {
-									LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
-									AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
-									param.val = new Expr(parent, parent.line, t);
-									toProcess.add(a0);
+					if(expr.members.size()==1 && !isBasicExpr(expr)) { 
+						if(expr.members.get(0) instanceof MethodCall) {
+							MethodCall MC = (MethodCall)expr.members.get(0);
+							for(int j=0; j<MC.params.size(); j++) {
+								MethodParam param = MC.params.get(j);
+								if(param.val instanceof Expr) {
+									Expr e = (Expr)param.val;
+									if(!isAtomicExpr(e)) {
+										LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
+										AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
+										param.val = new Expr(parent, parent.line, t);
+										toProcess.add(a0);
+									}
 								}
 							}
+						}
+						else { //LocationArray[non-atomic]
+							LocationArray LA = (LocationArray)expr.members.get(0);
+							Expr e = LA.index;
+							LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
+							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
+							LA.index = new Expr(parent, parent.line, t);
+							toProcess.add(a0);
 						}
 					}
 					else {
@@ -1081,15 +1091,16 @@ public class IR {
 			i += toAdd.size();
 		}
 	}
-	//return true if expr cannot be broken up further;
+	//return true if expr cannot be broken up further (LocationNoArray or Literal)
 	private boolean isAtomicExpr(Expr expr) {
 		return     expr.members.size()==1 && (
-				 ((expr.members.get(0) instanceof Location) ||
+				 ((expr.members.get(0) instanceof LocationNoArray) ||
 				  (expr.members.get(0) instanceof Literal)));
 	}
-	//returns true if expr can be directly computed in assembly ((Atomic op Atomic) or (op Atomic) or Atomic)
+	//returns true if expr can be directly computed in assembly ((Atomic op Atomic) or (op Atomic) or (Atomic) or (LocationArray[Atomic]))
 	private boolean isBasicExpr(Expr expr) {
 		if(	   isAtomicExpr(expr) || 
+			  (expr.members.size()==1 && (expr.members.get(0) instanceof LocationArray && isAtomicExpr(((LocationArray)expr.members.get(0)).index))) ||
 			  (expr.members.size()==2 && isAtomicExpr((Expr)expr.members.get(1))) ||
 			  (expr.members.size()==3 && isAtomicExpr((Expr)expr.members.get(0)) && isAtomicExpr((Expr)expr.members.get(2))))
 			return true;
@@ -1196,16 +1207,16 @@ public class IR {
 		}
 		
 		//extract method calls from exprs and exprs from method calls
-		separateCallsAndExpr(block, block, block.statements);
+		separateCallsAndExprAndArray(block, block, block.statements);
 		for(int i=0; i<block.statements.size(); i++) {
 			Statement st = block.statements.get(i);
 			if(st instanceof ForStatement) {
 				ForStatement FOR = (ForStatement)st;
-				separateCallsAndExpr(block, FOR, FOR.calcCondition);
+				separateCallsAndExprAndArray(block, FOR, FOR.calcCondition);
 			}
 			else if(st instanceof WhileStatement) {
 				WhileStatement WHILE = (WhileStatement)st;
-				separateCallsAndExpr(block, WHILE, WHILE.calcCondition);
+				separateCallsAndExprAndArray(block, WHILE, WHILE.calcCondition);
 			}
 		}
 		
@@ -1247,6 +1258,8 @@ public class IR {
 		}
 		//do this later to avoid ConcurrentModificationException
 		//chunk up expressions so that all expressions can be done in 1 assembly instruction
+		//NOTE: IR.Node.parent is messed up after this
+		//NOTE: Some LocationNoArrays are referenced multiple times after this
 		for(Block block: blocks)
 			processExprInBlock(block);
 	}
