@@ -12,7 +12,7 @@ import edu.mit.compilers.semantics.IR;
 public class ControlFlow {
 	public IR ir;
 	public Program program;
-	private final long wordSize = 8; //TODO: bools and ints are currently the same size
+	public final static long wordSize = 8; //TODO: bools and ints are currently the same size
 	public ControlFlow(IR ir) {
 		this.ir = ir;
 	}

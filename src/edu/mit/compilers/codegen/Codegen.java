@@ -61,28 +61,34 @@ public class Codegen {
 	}
 	private long labelCount;
 	private Map<CFStatement, String> labels;
-	private void addLabel(CFStatement _CFS) {
-		if(!labels.containsKey(_CFS)) {
+	private void writeAsmLabel(CFStatement CFS) {
+		if(!labels.containsKey(CFS)) {
 			String label = "label" + labelCount;
-			labels.put(_CFS, label);
+			labels.put(CFS, label);
 			labelCount++;
 			asmOutput.add(new Asm(Asm.Op.label, label));
 		}
-		else asmOutput.add(new Asm(Asm.Op.label, labels.get(_CFS))); //a label's already been created for this
+		else asmOutput.add(new Asm(Asm.Op.label, labels.get(CFS))); //a label's already been created for this
 	}
-	private void addLabelIfNonexistent(CFStatement _CFS) {
-		if(!labels.containsKey(_CFS)) {
+	private String getLabel(CFStatement CFS) {
+		if(!labels.containsKey(CFS)) {
 			String label = "label" + labelCount;
-			labels.put(_CFS, label);
+			labels.put(CFS, label);
 			labelCount++;
+			return label;
 		}
+		return labels.get(CFS);
 	}
-	private String getVarLoc(String name, CFPushScope scope) {
+	private String getVarLoc(IR.Location loc, CFPushScope scope) {
+		String name = loc.ID;
 		long stackOffset = 0;
 		while(scope != null) {
-			if(scope.variables.containsKey(name))
-				return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
-			stackOffset += scope.stackOffset + 8; //+8 because we push rbp every scope
+			if(scope.variables.containsKey(name)) {
+				if(loc instanceof IR.LocationArray)
+					return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)"; //TODO: deal with arrays
+				else return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
+			}
+			stackOffset += scope.stackOffset + ControlFlow.wordSize; //+8 because we push rbp every scope
 			scope = scope.parent;
 		}
 		//it's in the global scope
@@ -94,7 +100,7 @@ public class Codegen {
 		for(int i=0; i<CFS.scope.depth; i++)
 			System.out.print("  ");
 		System.out.println(CFS.getClass().getCanonicalName());
-		addLabel(CFS);
+		writeAsmLabel(CFS);
 		if(CFS instanceof CFPushScope) { //or Method
 			CFPushScope CFPS = (CFPushScope)CFS;
 			if(CFPS.stackOffset > 0) {
@@ -114,7 +120,7 @@ public class Codegen {
 		else if(CFS instanceof CFAssignment) {
 			asmOutput.add(new Asm(Asm.Op.custom, "CFAssignment"));
 			CFAssignment CFAS = (CFAssignment)CFS;
-			String loc1 = getVarLoc(CFAS.loc.ID, CFAS.scope);
+			String loc1 = getVarLoc(CFAS.loc, CFAS.scope);
 			if(CFAS.op.type == IR.Op.Type.increment)
 				asmOutput.add(new Asm(Asm.Op.inc, loc1));
 			else if(CFAS.op.type == IR.Op.Type.decrement)
@@ -123,7 +129,7 @@ public class Codegen {
 				IR.Node mem0 = CFAS.expr.members.get(0);
 				if(mem0 instanceof IR.Location)
 				{
-					String loc2 = getVarLoc(((IR.Location)mem0).ID, CFS.scope);
+					String loc2 = getVarLoc((IR.Location)mem0, CFS.scope);
 					if(CFAS.op.type == IR.Op.Type.assign)
 						asmOutput.add(new Asm(Asm.Op.movq, loc2, loc1));
 					else if(CFAS.op.type == IR.Op.Type.plusequals)
@@ -161,7 +167,7 @@ public class Codegen {
 						if(mem0 instanceof IR.Op) {
 							if(((IR.Op)mem0).type == IR.Op.Type.not) {
 								if(mem1 instanceof IR.LocationNoArray)
-									asmOutput.add(new Asm(Asm.Op.xor, "$1", getVarLoc(((IR.LocationNoArray)mem1).ID, CFS.scope)));
+									asmOutput.add(new Asm(Asm.Op.xor, "$1", getVarLoc((IR.LocationNoArray)mem1, CFS.scope)));
 								else {} //TODO: handle arrays
 							}
 							else throw new IllegalStateException("Unexpected op type: " + ((IR.Op)mem0).type.name());
@@ -193,7 +199,11 @@ public class Codegen {
 			asmOutput.add(new Asm(Asm.Op.custom, "CFReturn"));
 		}
 		else if(CFS instanceof CFBranch) {
-			asmOutput.add(new Asm(Asm.Op.custom, "CFBranch"));
+			//TODO: handle arrays
+			CFBranch CFB = (CFBranch)CFS;
+			IR.Expr expr = CFB.condition;
+			asmOutput.add(new Asm(Asm.Op.cmp, "Expr", "$1"));
+			asmOutput.add(new Asm(Asm.Op.jnz, getLabel(CFB.next2)));
 		}
 		else if(CFS instanceof CFNop) {
 
@@ -213,11 +223,8 @@ public class Codegen {
 					}
 					CFPS = CFPS.parent;
 				}
-				addLabelIfNonexistent(CFS);
-				
 			}
 			if(CFS.next.orderpos != CFS.orderpos+1) {
-				addLabelIfNonexistent(CFS.next);
 				asmOutput.add(new Asm(Asm.Op.jmp, labels.get(CFS.next)));
 			}
 		}
