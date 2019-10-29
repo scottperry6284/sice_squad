@@ -2,6 +2,7 @@ package edu.mit.compilers.semantics;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -194,10 +195,10 @@ public class IR {
 		private FieldDeclNoArray(IR.Node parent, ParseTree.Node node, IRType type, String ID) {
 			super(parent, node, type, ID);
 		}
-		public FieldDeclNoArray(IR.Node parent, int line, LocationNoArray loc) {
+		public FieldDeclNoArray(IR.Node parent, int line, LocationNoArray loc, IRType type) {
 			super(parent, line);
 			this.ID = loc.ID;
-			type = loc.getT();
+			this.type = type;
 		}
 		public String getText() {
 			return type.getName() + " " + ID;
@@ -383,8 +384,8 @@ public class IR {
 		}
 	}
 	private class CalcConditionHolder extends IR.Node { //only used for pretty printing
-		public List<AssignmentStatement> calcCondition;
-		public CalcConditionHolder(List<AssignmentStatement> calcCondition) {
+		public List<Statement> calcCondition;
+		public CalcConditionHolder(List<Statement> calcCondition) {
 			super(null, -1);
 			this.calcCondition = calcCondition;
 		}
@@ -398,7 +399,7 @@ public class IR {
 		public LocationNoArray initLoc;
 		public Expr initExpr;
 		public Expr condition;
-		public List<AssignmentStatement> calcCondition;
+		public List<Statement> calcCondition; //all AssignmentStatements
 		public AssignmentStatement iteration; //might not be great from a design perspective, but it works
 		public Block block;
 		public ForStatement(IR.Node parent, ParseTree.Node node) {
@@ -428,7 +429,7 @@ public class IR {
 	}
 	public class WhileStatement extends Statement {
 		public Expr condition;
-		public List<AssignmentStatement> calcCondition;
+		public List<Statement> calcCondition; //all AssignmentStatement
 		public Block block;
 		public WhileStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
@@ -911,7 +912,7 @@ public class IR {
 	}
 	private final Op.Type[] binOpExprPrecedence = new Op.Type[] {Op.Type.oror, Op.Type.andand, Op.Type.neq, Op.Type.eq, Op.Type.less,
 			Op.Type.leq, Op.Type.greater, Op.Type.geq, Op.Type.plus, Op.Type.minus, Op.Type.mult,
-			Op.Type.div, Op.Type.mod}; //Op.Type.minus is already manually handled
+			Op.Type.div, Op.Type.mod};
 	private final Op.Type[] unaryOpExprPrecedence = new Op.Type[] {Op.Type.minus, Op.Type.not};
 	private void parseExpr(Expr expr) {
 		for(Op.Type cur: binOpExprPrecedence) {
@@ -920,7 +921,7 @@ public class IR {
 				if(_node instanceof Op) {
 					Op op = (Op)_node;
 					if(op.type == cur) {
-						if(cur==Op.Type.minus && (i==0 || (expr.members.get(i-1) instanceof Op)))
+						if(cur==Op.Type.minus && (i==0 || (expr.members.get(i-1) instanceof Op))) //NEGATIVE sign, not MINUS
 							continue;
 						List<Node> newMembers = new ArrayList<>();
 						Expr e1 = new Expr(expr, expr.line, expr.members.subList(0, i));
@@ -936,8 +937,7 @@ public class IR {
 				}
 			}
 		}
-		//I'm operating with the assumption that negation and not effectively have the same precedence
-		//precedence is pretty much ignored
+		//I'm operating with the assumption that NEGATION and NOT effectively have the same precedence
 		if(expr.members.size() > 2) {
 			for(Op.Type cur: unaryOpExprPrecedence) {
 				Node _node = expr.members.get(0);
@@ -980,14 +980,14 @@ public class IR {
 			else fixNesting((Expr)expr.members.get(2));
 		}
 	}
-	private Map<IR.Node, LocationNoArray> tempExpr;
-	public LocationNoArray nodeToTempVar(Block block, IRType type, IR.Node node) {
-		if(!tempExpr.containsKey(node)) {
+	private Map<Expr, LocationNoArray> tempExpr;
+	public LocationNoArray exprToTempVar(Block block, IRType type, Expr expr) {
+		if(!tempExpr.containsKey(expr)) {
 			LocationNoArray loc = new LocationNoArray(block, block.line, "@temp" + tempExpr.size());
-			block.fields.add(new FieldDeclNoArray(block, block.line, loc));
-			tempExpr.put(node, loc);
+			block.fields.add(new FieldDeclNoArray(block, block.line, loc, type));
+			tempExpr.put(expr, loc);
 		}
-		return tempExpr.get(node);
+		return tempExpr.get(expr);
 	}
 	private List<Statement> extractMethodCallsFromExpr(Block block, Expr inputExpr) {
 		List<Statement> res = new ArrayList<>();
@@ -1010,42 +1010,104 @@ public class IR {
 		}
 		return res;
 	}
+	//return true if expr cannot be broken up further;
+	private boolean isAtomicExpr(Expr expr) {
+		return expr.members.size()==1 && (
+				 ((expr.members.get(0) instanceof Location) ||
+				  (expr.members.get(0) instanceof Literal)));
+	}
+	//returns true if expr can be directly computed in assembly ((Atomic op Atomic) or (op Atomic) or Atomic)
+	private boolean isBasicExpr(Expr expr) {
+		return isAtomicExpr(expr) || 
+			  (expr.members.size()==2 && isAtomicExpr((Expr)expr.members.get(1))) ||
+			  (expr.members.size()==3 && isAtomicExpr((Expr)expr.members.get(0)) && isAtomicExpr((Expr)expr.members.get(2)));
+	}
+	private void fragmentExpr(Block blockpar, IR.Node parent, List<Statement> statements) {
+		for(int i=0; i<statements.size(); i++) {
+			Statement st = statements.get(i);
+			List<Statement> toAdd = new ArrayList<>();
+			if(st instanceof AssignmentStatement) {
+				AssignmentStatement origAS = (AssignmentStatement)st;
+				Queue<AssignmentStatement> toProcess = new ArrayDeque<>();
+				toProcess.add(origAS);
+				while(!toProcess.isEmpty()) {
+					AssignmentStatement AS = toProcess.poll();
+					if(AS != origAS)
+						toAdd.add(AS);
+					Expr e = AS.assignExpr;
+					if(e.members.size() == 3) {
+						Expr child0 = (Expr)e.members.get(0);
+						if(!isAtomicExpr(child0)) {
+							LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
+							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
+							e.members.set(0, new Expr(parent, parent.line, t0));
+							toProcess.add(a0);
+						}
+						Expr child2 = (Expr)e.members.get(2);
+						if(!isAtomicExpr(child2)) {
+							LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
+							AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
+							e.members.set(2, new Expr(parent, parent.line, t2));
+							toProcess.add(a2);
+						}
+					}
+					else if(e.members.size() == 2) {
+						Expr child1 = (Expr)e.members.get(1);
+						if(!isAtomicExpr(child1)) {
+							LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
+							AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
+							e.members.set(0, new Expr(parent, parent.line, t1));
+							toProcess.add(a1);
+						}
+					}
+					else if(e.members.size() == 1) {
+						if(!isBasicExpr(e))
+							throw new IllegalStateException("Non basic expr with expr of size 1, child has type " + e.members.get(0).getClass().getSimpleName());
+					}
+					else throw new IllegalStateException("Expr has bad size, size = " + e.members.size());
+				}
+			}
+			Collections.reverse(toAdd);
+			statements.addAll(i, toAdd);
+			i += toAdd.size();
+		}
+	}
 	private void processExprInBlock(Block block) {
-		//extract exprs
+		//extract exprs from statements
 		for(int i=0; i<block.statements.size(); i++) {
 			Statement st = block.statements.get(i);
 			List<Statement> toAdd = new ArrayList<>();
-			if(st instanceof AssignmentStatement) {
-				AssignmentStatement AS = (AssignmentStatement)st;
-				LocationNoArray tempLoc = nodeToTempVar(block, AS.assignExpr.getT(), AS.assignExpr);
-				toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, AS.assignExpr));
-				AS.assignExpr = new Expr(block, block.line, tempLoc);
-			}
-			else if(st instanceof IfStatement) {
+			if(st instanceof IfStatement) {
 				IfStatement IF = (IfStatement)st;
-				LocationNoArray tempLoc = nodeToTempVar(block, IF.condition.getT(), IF.condition);
-				toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, IF.condition));
-				IF.condition = new Expr(block, block.line, tempLoc);
+				if(!isAtomicExpr(IF.condition)) {
+					LocationNoArray tempLoc = exprToTempVar(block, IF.condition.getT(), IF.condition);
+					toAdd.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, IF.condition));
+					IF.condition = new Expr(block, block.line, tempLoc);
+				}
 			}
 			else if(st instanceof ForStatement) {
 				ForStatement FOR = (ForStatement)st;
-				LocationNoArray tempLoc = nodeToTempVar(block, FOR.condition.getT(), FOR.condition);
-				FOR.calcCondition = new ArrayList<>();
-				FOR.calcCondition.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, FOR.condition));
-				FOR.condition = new Expr(block, block.line, tempLoc);
+				if(!isAtomicExpr(FOR.condition)) {
+					LocationNoArray tempLoc = exprToTempVar(block, FOR.condition.getT(), FOR.condition);
+					FOR.calcCondition = new ArrayList<>();
+					FOR.calcCondition.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, FOR.condition));
+					FOR.condition = new Expr(block, block.line, tempLoc);
+				}
 			}
 			else if(st instanceof WhileStatement) {
 				WhileStatement WHILE = (WhileStatement)st;
-				LocationNoArray tempLoc = nodeToTempVar(block, WHILE.condition.getT(), WHILE.condition);
-				WHILE.calcCondition = new ArrayList<>();
-				WHILE.calcCondition.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, WHILE.condition));
-				WHILE.condition = new Expr(block, block.line, tempLoc);
+				if(!isAtomicExpr(WHILE.condition)) {
+					LocationNoArray tempLoc = exprToTempVar(block, WHILE.condition.getT(), WHILE.condition);
+					WHILE.calcCondition = new ArrayList<>();
+					WHILE.calcCondition.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, WHILE.condition));
+					WHILE.condition = new Expr(block, block.line, tempLoc);
+				}
 			}
 			else if(st instanceof ReturnStatement) {
 				ReturnStatement RET = (ReturnStatement)st;
-				if(RET.expr != null) {
-					LocationNoArray tempLoc = nodeToTempVar(block, RET.expr.getT(), RET.expr);
-					toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, RET.expr));
+				if(RET.expr!=null && !isAtomicExpr(RET.expr)) {
+					LocationNoArray tempLoc = exprToTempVar(block, RET.expr.getT(), RET.expr);
+					toAdd.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, RET.expr));
 					RET.expr = new Expr(block, block.line, tempLoc);
 				}
 			}
@@ -1053,7 +1115,8 @@ public class IR {
 			i += toAdd.size();
 		}
 		
-		//extract method calls from exprs
+		//extract method calls from exprs and exprs from method calls
+		//keep doing this until no more changes occur
 		/*boolean changed = true;
 		while(changed) {
 			changed = false;
@@ -1064,13 +1127,17 @@ public class IR {
 					AssignmentStatement AS = (AssignmentStatement)st;
 					toAdd = extractMethodCallsFromExpr(block, AS.assignExpr);
 				}
+				else if(st instanceof ForStatement) {
+				}
+				else if(st instanceof WhileStatement) {
+				}
 				else if(st instanceof MethodCall) {
 					MethodCall MC = (MethodCall)st;
 					for(MethodParam param: MC.params) {
 						if(param.val instanceof Expr) {
 							Expr expr = (Expr)param.val;
 							LocationNoArray tempLoc = nodeToTempVar(block, expr.getT(), expr);
-							toAdd.add(i, new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, expr));
+							toAdd.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, expr));
 							param.val = new Expr(block, block.line, tempLoc);
 						}
 					}
@@ -1082,7 +1149,20 @@ public class IR {
 				}
 			}
 		}*/
-		//fragment exprs
+		
+		//fragment exprs so every operation is easy translated to assembly
+		fragmentExpr(block, block, block.statements);
+		for(int i=0; i<block.statements.size(); i++) {
+			Statement st = block.statements.get(i);
+			if(st instanceof ForStatement) {
+				ForStatement FOR = (ForStatement)st;
+				fragmentExpr(block, FOR, FOR.calcCondition);
+			}
+			else if(st instanceof WhileStatement) {
+				WhileStatement WHILE = (WhileStatement)st;
+				fragmentExpr(block, WHILE, WHILE.calcCondition);
+			}
+		}
 	}
 	private void postprocess() {
 		IRTraverser irTraverser = new IRTraverser(this);
@@ -1090,7 +1170,9 @@ public class IR {
 			IR.Node _node = irTraverser.getNext();
 			if(_node instanceof Expr) {
 				Expr expr = (Expr)_node;
+				//turn expressions into trees that obey order of operations
 				parseExpr(expr);
+				//modify nesting so that expression trees obey the grammar and remove unnecessary parentheses
 				fixNesting(expr);
 			}
 		}
@@ -1105,7 +1187,8 @@ public class IR {
 				blocks.add((Block)_node);
 		}
 		//do this later to avoid ConcurrentModificationException
-		/*for(Block block: blocks)
-			processExprInBlock(block);*/
+		//chunk up expressions so that all expressions can be done in 1 assembly instruction
+		for(Block block: blocks)
+			processExprInBlock(block);
 	}
 }
