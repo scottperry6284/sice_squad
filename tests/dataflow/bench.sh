@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # USAGE:
-#   `./test.sh` to run tests sequentially
-#   `./test.sh --parallel` to run tests in parallel
+#   `./bench $INPUT_FILE_1 $INPUT_FILE_2 ...`
 
 source "$(git rev-parse --show-toplevel)/tests/source.sh"
 
