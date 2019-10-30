@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 # USAGE:
-#   execute this script without any args
+#   `./test.sh` to run tests sequentially
+#   `./test.sh --parallel` to run tests in parallel
 
 source "$(git rev-parse --show-toplevel)/tests/source.sh"
 
+# remove temps created during this run
 function finish {
   rm -rf "$TMPDIR"
 }
 trap finish INT TERM HUP EXIT
 
-# &1 -> all input decaf files that run without an error
-function get-input-files-no-error {
+# &1 -> all input decaf files that should run without an error
+function get-input-files-should-pass {
   find "$ROOT/tests/codegen/input/" -type f -name "*.dcf"
 }
 
 # &1 -> all input decaf files that are expected to throw an error
-function get-input-files-error {
+function get-input-files-should-fail {
   find "$ROOT/tests/codegen/error/" -type f -name "*.dcf"
 }
 
@@ -28,13 +30,18 @@ function dcf-to-asm {
 # $1 -> assembly file to assemble
 # $2 -> executable file to create
 function asm-to-exec {
-  gcc -no-pie "$1" -o "$2"
+  gcc -no-pie -O0 "$1" -o "$2"
 }
 
 # $1 -> path
-# &2 -> shorter versino of path
+# &1 -> basename along with the immediate parent directory name
 function clean {
   sed -E 's/^.+codegen\///' <<< "$1"
+}
+
+# run the downloaded parallel executable
+function par {
+  "$ROOT/parallel" --eta --max-procs 8 $@
 }
 
 # $1 -> dcf input file
@@ -45,41 +52,29 @@ function clean {
 #       3 otherwise
 function test-runner {
   declare -r DCF_FILE="$1"
-  declare -r EXPECTED_OUTPUT_FILE="$(dirname $(dirname $DCF_FILE))/output/$(basename $DCF_FILE).out"
+  declare -r EXPECTED_OUTPUT_FILE="$(dirname $(dirname "$DCF_FILE"))/output/$(basename "$DCF_FILE").out"
 
-  # temporary files to hold intermediate results
-  mkdir -p "$TMPDIR/$(basename $DCF_FILE)"
+  #  declare -r TEMP_ASM="$TMPDIR/$(basename "$DCF_FILE")/main.s"
+  declare -r TEMP_ASM="$TMPDIR/$(basename "$DCF_FILE").s"
+  declare -r TEMP_BIN="$TMPDIR/$(basename "$DCF_FILE").exec"
+  declare -r TEMP_OUT="$TMPDIR/$(basename "$DCF_FILE").out"
 
-  declare -r TEMP_ASM="$TMPDIR/$(basename $DCF_FILE)/main.s"
-  declare -r TEMP_BIN="$TMPDIR/$(basename $DCF_FILE)/main.bin"
-  declare -r TEMP_OUT="$TMPDIR/$(basename $DCF_FILE)/main.out"
-
-  # compile to asm
-  dcf-to-asm "$DCF_FILE" "$TEMP_ASM" &> /dev/null
-  if [[ $? -eq 0 ]]; then
-    # compile to executable
-    asm-to-exec "$TEMP_ASM" "$TEMP_BIN" &> /dev/null
-    if [[ $? -eq 0 ]]; then
-
-      # execute binary, save output and exit code
-      "$TEMP_BIN" > "$TEMP_OUT" 2> /dev/null
-      if [[ $? -eq 0 ]]; then
-        if diff "$EXPECTED_OUTPUT_FILE" "$TEMP_OUT" &> /dev/null ; then
-          return 0  # everything is well
-        else
-          return 2  # output mismatch probably
-        fi
+  if dcf-to-asm "$DCF_FILE" "$TEMP_ASM" &> /dev/null; then     # dcf -> asm
+    if asm-to-exec "$TEMP_ASM" "$TEMP_BIN" &> /dev/null; then  # asm -> bin
+      if "$TEMP_BIN" > "$TEMP_OUT" 2> /dev/null; then          # ./bin
+        diff "$EXPECTED_OUTPUT_FILE" "$TEMP_OUT" &> /dev/null && 
+          return 0 ||  # everything is well
+          return 2     # output mismatch
       else
         return 1  # executable threw a runtime error
       fi
 
     else
-      red "assembly of '$(clean $DCF_FILE)' could not be assembled"
-      red "your assembly looked like"
-      cat "$TEMP_ASM" >&2
+      red "assembly of '$(clean "$DCF_FILE")' could not be assembled"
     fi
+
   else
-    red "failed to compile '$(clean $DCF_FILE)' to assembly"
+    red "failed to compile '$(clean "$DCF_FILE")' to assembly"
   fi
   return 3  # compiler or assembler failed
 }
@@ -88,16 +83,18 @@ function test-runner {
 # &1 -> 'TESTCASE-PASS' if test passed, nothing otherwise
 function test-should-pass {
   declare -r DCF_FILE="$1"
+  declare -r CLEANED="$(clean "$DCF_FILE")"
 
   test-runner "$DCF_FILE"
   declare -r CODE=$?
 
   case $CODE in
-    0) green "passed -- '$(clean $DCF_FILE)'";
-       echo 'TESTCASE-PASS';;
-    1) red "threw a runtime error -- '$(clean $DCF_FILE)'";;
-    2) red "output doesn't match -- '$(clean $DCF_FILE)";;
-    3) red "compiler threw an error -- '$(clean $DCF_FILE)'";;
+    0) green "passed -- '$CLEANED'"                ;
+       echo 'TESTCASE-PASS'                        ;;
+    1) red "threw a runtime error -- '$CLEANED'"   ;;
+    2) red "output doesn't match -- '$CLEANED'"    ;;
+    3) red "compiler threw an error -- '$CLEANED'" ;;
+    *) red "unexpected exit code -- '$CLEANED'"    ;;
   esac
 }
 
@@ -105,35 +102,36 @@ function test-should-pass {
 # &1 -> 'TESTCASE-PASS' if a runtime error is thrown, nothing otherwise
 function test-should-fail {
   declare -r DCF_FILE="$1"
+  declare -r CLEANED="$(clean "$DCF_FILE")"
 
   test-runner "$DCF_FILE"
   declare -r CODE=$?
 
   case $CODE in
-    3) red "your compiler threw an error -- '$(clean $DCF_FILE)'";;
-    1) green "successfully threw a runtime error -- '$(clean $DCF_FILE)'";
-       echo 'TESTCASE-PASS';;
-    *) red "failed to throw a runtime error -- '$(clean $DCF_FILE)'";;
+    1) green "successfully threw a runtime error -- '$CLEANED'" ;
+       echo 'TESTCASE-PASS'                                     ;;
+    3) red "your compiler threw an error -- '$CLEANED'"         ;;
+    *) red "failed to throw a runtime error -- '$CLEANED'"      ;;
   esac
-}
-
-function par {
-  "$ROOT/parallel" --eta --max-procs 4 $@
 }
 
 # directory to hold all temporary values
 declare -r TMPDIR="$ROOT/.dcf-tmp"
+# 0 if we should run parallel 1 if sequential
+declare -r RUN_PARALLEL=$( if [[ "$1" == '--parallel' ]]; then echo 0; else echo 1; fi )
 
 # functions and globals to use in functions
 export TMPDIR
 export -f dcf-to-asm asm-to-exec test-runner test-should-pass test-should-fail clean
 
-# download gnu parallel
-if ! [[ -f "$ROOT/parallel" ]]; then
-  wget -O - 'http://git.savannah.gnu.org/cgit/parallel.git/plain/src/parallel' > "$ROOT/parallel"
-  chmod +x "$ROOT/parallel"
+if [[ "$RUN_PARALLEL" -eq 0 ]]; then
+  # download gnu parallel
+  if ! [[ -f "$ROOT/parallel" ]]; then
+    wget -O - 'http://git.savannah.gnu.org/cgit/parallel.git/plain/src/parallel' > "$ROOT/parallel"
+    chmod +x "$ROOT/parallel"
+  fi
+  "$ROOT/parallel" --version
 fi
-"$ROOT/parallel" --version
 
 # create fresh for every run
 mkdir -p "$TMPDIR"
@@ -141,28 +139,34 @@ mkdir -p "$TMPDIR"
 build  # calls build.sh
 
 # number of tests that shouldn't throw an error and passed
-# kind of making a naive assumption that --max-procs 4 will not cause OOM
 declare -r COUNT_PASS_NO_ERROR=$(
-  get-input-files-no-error |
-    while read f; do
-      test-should-pass "$f"
-    done |
-    grep 'TESTCASE-PASS' |
-    wc -l
+  get-input-files-should-pass |
+    if [[ "$RUN_PARALLEL" -eq 0 ]]; then
+      par 'test-should-pass {}' <&0
+    else 
+      while read INPUT_FILE; do
+        test-should-pass "$INPUT_FILE"
+      done <&0
+    fi |
+    grep -c 'TESTCASE-PASS'
 )
 # number of tests that are supposed to throw an error and passed
 declare -r COUNT_PASS_ERROR=$(
-  get-input-files-error |
-    while read f; do
-      test-should-fail "$f"
-    done |
-    grep 'TESTCASE-PASS' |
-    wc -l
+  get-input-files-should-fail |
+    if [[ "$RUN_PARALLEL" -eq 0 ]]; then
+      par 'test-should-fail {}' <&0
+    else 
+      while read INPUT_FILE; do
+        test-should-fail "$INPUT_FILE"
+      done <&0
+    fi |
+    grep -c 'TESTCASE-PASS'
 )
 
 # number of all tests
 declare -r COUNT_ALL=$(
- { get-input-files-no-error; get-input-files-error; } | wc -l
+ { get-input-files-should-pass; get-input-files-should-fail; } | wc -l
 )
 
 green "\nPASSED $(( COUNT_PASS_NO_ERROR + COUNT_PASS_ERROR )) / $COUNT_ALL"
+
