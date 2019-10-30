@@ -5,6 +5,11 @@
 
 source "$(git rev-parse --show-toplevel)/tests/source.sh"
 
+if ! gcc -v 2>&1 | grep -q '^Target: x86_64-linux-gnu'; then
+  red 'ERROR: architecture is not x86_64-linux-gnu'
+  exit 1
+fi
+
 # remove temps created during this run
 function finish {
   rm -rf "$TMPDIR"
@@ -118,7 +123,7 @@ function test-should-fail {
 # directory to hold all temporary values
 declare -r TMPDIR="$ROOT/.dcf-tmp"
 # 0 if we should run parallel 1 if sequential
-declare -r RUN_PARALLEL=$( if [[ "$1" == '--parallel' ]]; then echo 0; else echo 1; fi )
+declare -r RUN_PARALLEL=$( grep -Pq '^--parallel$' <<< "$1" && echo 0 || echo 1 )
 
 # functions and globals to use in functions
 export TMPDIR
