@@ -142,9 +142,14 @@ token.getType() != DecafParserTokenTypes.EOF;
 	    	  Codegen CG = new Codegen(CF);
 	    	  CG.build();
 	    	  List<String> asm = CG.getAsm();
+	    	  /*asm.clear();
+	    	  asm.add(".globl main");
+	    	  asm.add("main:");
+	    	  asm.add("\tmov $0, %rax");
+	    	  asm.add("\tret");*/
 	    	  if(CLI.outfile == null) {
 	    		  for(String i: asm)
-	    			  System.out.print(i);
+	    			  System.out.println(i);
 	    	  }
 	    	  else {
 	    		  Files.write(Paths.get(CLI.outfile), asm, StandardCharsets.UTF_8);
