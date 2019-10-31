@@ -414,8 +414,10 @@ public class IR {
 		}
 		public List<IR.Node> getChildren() {
 			List<IR.Node> children = new ArrayList<>();
-			children.add(initLoc);
-			children.add(initExpr);
+			if(initLoc != null) {
+				children.add(initLoc);
+				children.add(initExpr);
+			}
 			children.add(condition);
 			if(calcCondition != null) {
 				IR.Node dummy = new CalcConditionHolder(calcCondition);
@@ -863,6 +865,7 @@ public class IR {
 		protected Literal(IR.Node parent, int line) {
 			super(parent, line);
 		}
+		public abstract long val();
 	}
 	public static class BoolLiteral extends Literal {
 		public boolean value;
@@ -874,6 +877,9 @@ public class IR {
 		}
 		public String getText() {
 			return Boolean.toString(value);
+		}
+		public long val() {
+			return value? 1: 0;
 		}
 	}
 	public static class IntLiteral extends Literal {
@@ -894,6 +900,9 @@ public class IR {
 		public String getText() {
 			return Long.toString(value);
 		}
+		public long val() {
+			return value;
+		}
 	}
 	public static class CharLiteral extends Literal {
 		public char value;
@@ -907,6 +916,9 @@ public class IR {
 			String ret = new String();
 			ret += value;
 			return ret;
+		}
+		public long val() {
+			return value;
 		}
 	}
 	public void build() {
@@ -930,11 +942,11 @@ public class IR {
 					if(op.type == cur) {
 						if(cur==Op.Type.minus && (i==0 || (expr.members.get(i-1) instanceof Op))) //NEGATIVE sign, not MINUS
 							continue;
-						List<Node> newMembers = new ArrayList<>();
 						Expr e1 = new Expr(expr, expr.line, expr.members.subList(0, i));
 						Expr e2 = new Expr(expr, expr.line, expr.members.subList(i+1, expr.members.size()));
 						parseExpr(e1);
 						parseExpr(e2);
+						List<Node> newMembers = new ArrayList<>();
 						newMembers.add(e1);
 						newMembers.add(new Op(expr, op.line, op.type));
 						newMembers.add(e2);
@@ -951,9 +963,9 @@ public class IR {
 				if(_node instanceof Op) {
 					Op op = (Op)_node;
 					if(op.type == cur) {
-						List<Node> newMembers = new ArrayList<>();
 						Expr e2 = new Expr(expr, expr.line, expr.members.subList(1, expr.members.size()));
 						parseExpr(e2);
+						List<Node> newMembers = new ArrayList<>();
 						newMembers.add(new Op(expr, op.line, op.type));
 						newMembers.add(e2);
 						expr.members = newMembers;
@@ -1177,7 +1189,7 @@ public class IR {
 						if(!isAtomicExpr(child1)) {
 							LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
 							AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
-							e.members.set(0, new Expr(parent, parent.line, t1));
+							e.members.set(1, new Expr(parent, parent.line, t1));
 							toProcess.add(a1);
 						}
 					}

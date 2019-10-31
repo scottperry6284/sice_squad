@@ -300,14 +300,10 @@ public class ControlFlow {
 		}
 	}
 	public class CFMethodCall extends CFStatement {
-		public String ID;
-		public List<IR.MethodParam> params;
+		public IR.MethodCall call;
 		public CFMethodCall(CFPushScope scope, int line, IR.MethodCall call) {
 			super(scope, line);
-			this.ID = call.ID;
-			this.params = new ArrayList<>();
-			for(IR.MethodParam i: call.params)
-				this.params.add(i);
+			this.call = call;
 		}
 	}
 	public void build() {

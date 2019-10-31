@@ -9,6 +9,7 @@ import java.util.List;
 import antlr.Token;
 import edu.mit.compilers.codegen.Codegen;
 import edu.mit.compilers.codegen.ControlFlow;
+import edu.mit.compilers.codegen.Codegen.Asm;
 import edu.mit.compilers.grammar.*;
 import edu.mit.compilers.semantics.IR;
 import edu.mit.compilers.semantics.ParseTree;
@@ -143,11 +144,7 @@ token.getType() != DecafParserTokenTypes.EOF;
 	    	  Codegen CG = new Codegen(CF);
 	    	  CG.build();
 	    	  List<String> asm = CG.getAsm();
-	    	  /*asm.clear();
-	    	  asm.add(".globl main");
-	    	  asm.add("main:");
-	    	  asm.add("\tmov $0, %rax");
-	    	  asm.add("\tret");*/
+	    	  //asm.add("call exit");
 	    	  if(CLI.outfile == null) {
 	    		  for(String i: asm)
 	    			  System.out.println(i);
