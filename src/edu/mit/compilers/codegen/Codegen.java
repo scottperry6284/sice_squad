@@ -18,6 +18,7 @@ import edu.mit.compilers.codegen.ControlFlow.CFReturn;
 import edu.mit.compilers.codegen.ControlFlow.CFContainer;
 import edu.mit.compilers.codegen.ControlFlow.CFStatement;
 import edu.mit.compilers.semantics.IR;
+import edu.mit.compilers.semantics.IR.Expr;
 import edu.mit.compilers.semantics.IR.Op;
 
 public class Codegen {
@@ -25,10 +26,13 @@ public class Codegen {
 	public ControlFlow CF;
 	public List<Asm> asmOutput;
 	public List<Asm> asmStringOutput;
-	public 
+	public Set<String> addedStrings; 
+	
 	public static class Asm {
 		public enum Op { //newline is just whitespace for formatting
-			methodlabel, label, pushq, movq, popq, add, sub, ret, custom, newline, xor, jz, jnz, test, inc, dec, cmp, jmp, not, neg;
+			methodlabel, label, pushq, movq, popq, add, sub, ret, custom, newline, xor, call,
+			jz, jnz, test, inc, dec, cmp, jmp, not, neg, string, align, mul, div, and, or, leaq,
+			sete, setne, setge, setle, setg, setl;
 		}
 		public Op op;
 		public String arg1, arg2;
@@ -49,6 +53,10 @@ public class Codegen {
 				return arg1;
 			if(op == Op.label || op == Op.methodlabel)
 				return arg1 + ":";
+			if (op == Op.string || op == Op.align)
+				return "." + op.name() + " " + arg1;
+			if (op == Op.leaq)
+				return op.name() + " " + arg1 + "(%rip)," + " " + arg2;
 			if(op == Op.newline)
 				return "";
 			if(arg1 == null)
@@ -81,6 +89,104 @@ public class Codegen {
 		}
 		return labels.get(CFS);
 	}
+	private void executeMethod(CFStatement CFS) {
+		CFMethodCall CFMC = (CFMethodCall) CFS;
+
+		String[] CCallRegs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+		Boolean importMethod = CF.importMethods.containsKey(CFMC.ID);
+		
+		for (int i = 0; i < CFMC.params.size(); i++) {
+
+			Object param = CFMC.params.get(i);
+
+			// Put all of the strings in a seperate list.
+			if (param instanceof String) {
+
+				String paramCast = (String) param;
+		
+				if (!addedStrings.contains(paramCast)) {
+					addedStrings.add(paramCast);
+
+					// Create Tag.
+					asmStringOutput.add(new Asm(Asm.Op.label, paramCast));
+
+					// Do .string instruction
+					asmStringOutput.add(new Asm(Asm.Op.string, paramCast));
+
+					// align the memory.
+					asmStringOutput.add(new Asm(Asm.Op.align, 16));
+				}	
+
+				if (importMethod && (i<=5)){
+					
+					asmOutput.add(new Asm(Asm.Op.leaq, paramCast, CCallRegs[i]));
+
+				} else {
+					// If more than 6 args put into r10 and then push to stack.
+					asmOutput.add(new Asm(Asm.Op.leaq, paramCast, "%r10"));
+					asmOutput.add(new Asm(Asm.Op.pushq, "%r10"));
+				}
+
+			} else {
+
+				IR.Node paramCast = ((Expr) param).getChildren().get(0);
+		
+				if (paramCast instanceof IR.LocationNoArray) {
+
+					IR.LocationNoArray paramCastLocationNoArray = (IR.LocationNoArray) paramCast;
+					
+					String varVal = getVarVal(paramCastLocationNoArray, CFS.scope);
+
+					if (importMethod && (i<=5)) {
+						asmOutput.add(new Asm(Asm.Op.moveq, varVal, CCallRegs[i]));
+					} else {
+						asmOutput.add(new Asm(Asm.Op.pushq, varVal));
+					}
+		
+				} else if (paramCast instanceof IR.BoolLiteral) {
+
+					IR.BoolLiteral paramCastBool = (IR.BoolLiteral) paramCast;
+					if (paramCastBool.value) {
+						if (importMethod && (i<=5)) {
+							asmOutput.add(new Asm(Asm.Op.moveq, "$1", CCallRegs[i]));
+						} else {
+							asmOutput.add(new Asm(Asm.Op.pushq, "$1"));
+						}
+					} else {
+						if (importMethod && (i<=5)) {
+							asmOutput.add(new Asm(Asm.Op.moveq, "$0", CCallRegs[i]));
+						} else {
+							asmOutput.add(new Asm(Asm.Op.pushq, "$0"));
+						}	
+					}
+
+				} else if (paramCast instanceof IR.IntLiteral) {
+					IR.IntLiteral paramCastInt = (IR.IntLiteral) paramCast;
+
+					if (importMethod && (i<=5)) {
+						asmOutput.add(new Asm(Asm.Op.moveq, "$" + paramCastInt.getText(), CCallRegs[i]));
+					} else {
+						asmOutput.add(new Asm(Asm.Op.pushq, "$" + paramCastInt.getText()));
+					}
+
+				} else if (paramCast instanceof IR.CharLiteral) {
+					IR.CharLiteral paramCastChar = (IR.CharLiteral) paramCast;
+
+					if (importMethod && (i<=5)) {
+						asmOutput.add(new Asm(Asm.Op.moveq, "$" + (long) paramCastChar.val, CCallRegs[i]));
+					} else {
+						asmOutput.add(new Asm(Asm.Op.pushq, "$" + (long) paramCastChar.val));
+					}
+				} 
+			}
+
+			// Make method call.
+			asmOutput.add(new Asm(Asm.Op.call, CFMC.ID));
+
+		}
+	}
+
 	private String getVarLoc(IR.Location loc, CFPushScope scope) {
 		String name = loc.ID;
 		long stackOffset = 0;
@@ -97,6 +203,9 @@ public class Codegen {
 		if(!CF.program.variables.containsKey(name))
 			throw new IllegalStateException("Variable with name \"" + name + "\" not found in any scope");
 		return CF.program.variables.get(name).stackOffset + "(%globalvar)";
+	}
+	private String getVarVal(IR.Location loc, CFPushScope scope) {
+		return '[' + getVarLoc(loc, scope) + ']';
 	}
 	private void processCFS(CFStatement CFS) {
 		for(int i=0; i<CFS.scope.depth; i++)
@@ -187,76 +296,57 @@ public class Codegen {
 			}
 		}
 		else if(CFS instanceof CFMethodCall) {
-			CFMethodCall CFMC = (CFMethodCall)CFS;
-			
-			if(CF.importMethods.containsKey(CFMC.ID)) {
-				
-			}
-			else if(CF.methods.containsKey(CFMC.ID)) {
-
-				asmOutput.add(new Asm(Asm.Op.custom, "CFMethodCall"));
-
-				// Build assembly instructions for the params.
-				for (Object param: params) {
-					// Check if param is a string.
-
-					// Put all of the strings in a seperate list.
-					if (param instanceof String) {
-						// Create Tag.
-
-						asmStringOutput.add(new Asm(Asm.Op.pushq, label);
-
-						asmOutput.add(new Asm(Asm.Op.pushq, param.));
-						// Do .string instruction
-
-						// align the memory.
-
-
-					}
-					else if (param instanceof IR.BoolLiteral) {
-						IR.BoolLiteral paramCast = (IR.BoolLiteral) param;
-						if (paramCast.value) {
-							asmOutput.add(new Asm(Asm.Op.pushq, "$1"));
-						} else {
-							asmOutput.add(new Asm(Asm.Op.pushq, "$0"));
-						}
-					}
-
-					else if (param instanceof IR.IntLiteral) {
-						IR.IntLiteral paramCast = (IR.IntLiteral) param;
-						asmOutput.add(new Asm(Asm.Op.pushq, "$" + paramCast.getText()));
-					}
-
-					else { // Must be a literial I can look up in the Symbol Table.
-						// Push to stack.
-						asmOutput.add(new Asm(Asm.Op.jmp, CFMC.ID));
-
-					}
-				}
-
-				// Jump to method's location.
-				asmOutput.add(new Asm(Asm.Op.jmp, CFMC.ID));
-
-			}
-			else {
-				throw new IllegalStateException("Unknown method ID: " + CFMC.ID);
-			}
+			executeMethod(CFS);
 		}
 		else if(CFS instanceof CFReturn) {
-			asmOutput.add(new Asm(Asm.Op.custom, "CFReturn"));
-		}
-		else if(CFS instanceof CFBranch) {
-			//TODO: handle arrays
+
+			IR.Node paramCast = ((Expr) param).getChildren().get(0);
+			
+			// Just put the atomic return in rax.
+			if (paramCast instanceof IR.LocationNoArray) {
+				IR.LocationNoArray paramLocationNoArray = (IR.LocationNoArray) paramCast;
+				String varVal = getVarVal(paramLocationNoArray, CFS.scope);
+				asmOutput.add(new Asm(Asm.Op.moveq, varVal, "%rax"));
+				
+			} else if (paramCast instanceof IR.BoolLiteral) {
+				IR.BoolLiteral paramCastBool = (IR.BoolLiteral) paramCast;
+				if (paramCastBool.value) {
+					asmOutput.add(new Asm(Asm.Op.moveq, "$1", "%rax"));
+				} else {
+					asmOutput.add(new Asm(Asm.Op.moveq, "$0", "%rax"));
+				}
+
+			} else if (paramCast instanceof IR.IntLiteral) {
+				IR.IntLiteral paramCastInt = (IR.IntLiteral) paramCast;
+				asmOutput.add(new Asm(Asm.Op.moveq, "$" + paramCast.getText(), "%rax"));
+
+			} else {
+				;
+			}
+
+		} else if(CFS instanceof CFBranch) {
 			CFBranch CFB = (CFBranch)CFS;
 			IR.Expr expr = CFB.condition;
-			asmOutput.add(new Asm(Asm.Op.cmp, "Expr", "$1"));
-			asmOutput.add(new Asm(Asm.Op.jnz, getLabel(CFB.next2)));
+
+			if (expr instanceof IR.LocationNoArray){
+				String varVal = getVarVal(((IR.LocationNoArray) expr), CFS.scope);
+
+				asmOutput.add(new Asm(Asm.Op.cmp, varVal, "$1"));
+				// Jump to next2
+				asmOutput.add(new Asm(Asm.Op.jne, getLabel(CFB.next2)));
+
+			} else if (expr instanceof IR.BoolLiteral){
+				if (((IR.BoolLiteral) expr).value) {
+					// Jump to next2
+					asmOutput.add(new Asm(Asm.Op.jne, getLabel(CFB.next2)));
+				}
+			}
 		}
 		else if(CFS instanceof CFNop) {
-
+			// Nothing to do.
 		}
 		else if(CFS instanceof CFContainer) {
-			return;
+			// Nothing to do.
 		}
 		else throw new IllegalStateException("Unexpected CFS type: " + CFS.getClass().getCanonicalName());
 		if(CFS.next != null) {
@@ -309,6 +399,8 @@ public class Codegen {
 	}
 	public void build() {
 		asmOutput = new ArrayList<>();
+		asmStringOutput = new ArrayList<>();
+		addedStrings = new HashSet<String>();
 		
 		labelCount = 0;
 		labels = new HashMap<>();
