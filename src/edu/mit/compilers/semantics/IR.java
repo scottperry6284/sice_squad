@@ -923,7 +923,7 @@ public class IR {
 			return;
 		}
 		for(Op.Type cur: binOpExprPrecedence) {
-			for(int i=0; i<expr.members.size(); i++) {
+			for(int i=expr.members.size()-1; i>=0; i--) {
 				Node _node = expr.members.get(i);
 				if(_node instanceof Op) {
 					Op op = (Op)_node;
