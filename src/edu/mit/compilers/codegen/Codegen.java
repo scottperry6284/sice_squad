@@ -271,6 +271,7 @@ public class Codegen {
 			// Nothing to do.
 		}
 		else if(CFS instanceof CFContainer) {
+			return; //don't add jumps/scopes for CFContainer
 			// Nothing to do.
 		}
 		else throw new IllegalStateException("Unexpected CFS type: " + CFS.getClass().getCanonicalName());
@@ -294,7 +295,7 @@ public class Codegen {
 	private List<CFStatement> CFOrder;
 	private Set<CFStatement> addedCF;
 	private void genCFOrder(CFStatement CFS, CFMergeBranch stop) {
-		if(CFS==null || CFS==stop || CFS.orderpos!=-1)
+		if(CFS==null || CFS==stop)
 			return;
 		if(addedCF.contains(CFS))
 			throw new IllegalStateException("Duplicate CFS");
