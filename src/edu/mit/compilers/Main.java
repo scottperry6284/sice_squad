@@ -127,6 +127,8 @@ token.getType() != DecafParserTokenTypes.EOF;
 	      try {
 	    	  IR irbuilder = new IR(parseTree);
 	    	  irbuilder.build();
+	    	  ScottSemantics.RootCheck(irbuilder.root); 
+	    	  irbuilder.simplifyExpr();
 	    	  ControlFlow CF = new ControlFlow(irbuilder);
 	    	  CF.build();
 	    	  Codegen CG = new Codegen(CF);

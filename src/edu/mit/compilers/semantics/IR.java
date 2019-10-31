@@ -521,6 +521,10 @@ public class IR {
 	}
 	public static class Expr extends IR.Node {
 		public List<Node> members;
+		public Expr(Expr expr) {
+			super(expr.parent, expr.line);
+			members = new ArrayList<>(expr.members);
+		}
 		public Expr(IR.Node parent, ParseTree.Node node, long val) {
 			super(parent, node);
 			members = new ArrayList<>();
@@ -1019,7 +1023,18 @@ public class IR {
 				}
 				else {
 					AssignmentStatement AS = (AssignmentStatement)statement;
+					if(AS.loc instanceof LocationArray) { 
+						LocationArray LA = (LocationArray)AS.loc;
+						if(!isAtomicExpr(LA.index)) { //LocationArray[non-atomic]
+							LocationNoArray t = exprToTempVar(blockpar, LA.index.getT(), LA.index);
+							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, LA.index);
+							LA.index = new Expr(parent, parent.line, t);
+							toProcess.add(a0);
+						}
+					}
 					Expr expr = AS.assignExpr;
+					if(expr == null) //inc/dec
+						continue;
 					if(expr.members.size()==1 && !isBasicExpr(expr)) { 
 						if(expr.members.get(0) instanceof MethodCall) {
 							MethodCall MC = (MethodCall)expr.members.get(0);
@@ -1091,13 +1106,13 @@ public class IR {
 			i += toAdd.size();
 		}
 	}
-	//return true if expr cannot be broken up further (LocationNoArray or Literal)
+	//return true if expr is (LocationNoArray) or (Literal)
 	private boolean isAtomicExpr(Expr expr) {
 		return     expr.members.size()==1 && (
 				 ((expr.members.get(0) instanceof LocationNoArray) ||
 				  (expr.members.get(0) instanceof Literal)));
 	}
-	//returns true if expr can be directly computed in assembly ((Atomic op Atomic) or (op Atomic) or (Atomic) or (LocationArray[Atomic]))
+	//returns true if expr can be directly computed in assembly ((Atomic op Atomic) or (op Atomic) or (Atomic) or (LocationArray[Atomic]) or (MethodCall(atomics...)))
 	private boolean isBasicExpr(Expr expr) {
 		if(	   isAtomicExpr(expr) || 
 			  (expr.members.size()==1 && (expr.members.get(0) instanceof LocationArray && isAtomicExpr(((LocationArray)expr.members.get(0)).index))) ||
@@ -1126,7 +1141,18 @@ public class IR {
 					if(AS != origAS)
 						toAdd.add(AS);
 					Expr e = AS.assignExpr;
-					if(e.members.size() == 3) {
+					if(e == null) //inc/dec
+						continue;
+					if(AS.op.type==Op.Type.plusequals || AS.op.type==Op.Type.minusequals) {
+						if(!isAtomicExpr(e)) {
+							Expr origExpr = new Expr(e); //deep copy
+							LocationNoArray t0 = exprToTempVar(blockpar, e.getT(), origExpr);
+							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, origExpr);
+							e.members.set(0, new Expr(parent, parent.line, t0));
+							toProcess.add(a0);
+						}
+					}
+					else if(e.members.size() == 3) {
 						Expr child0 = (Expr)e.members.get(0);
 						if(!isAtomicExpr(child0)) {
 							LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
@@ -1152,8 +1178,7 @@ public class IR {
 						}
 					}
 					else if(e.members.size() == 1) {
-						if(!isBasicExpr(e))
-							throw new IllegalStateException("Non basic expr with expr of size 1, child has type " + e.members.get(0).getClass().getSimpleName());
+
 					}
 					else throw new IllegalStateException("Expr has bad size, size = " + e.members.size());
 				}
@@ -1178,6 +1203,11 @@ public class IR {
 			}
 			else if(st instanceof ForStatement) {
 				ForStatement FOR = (ForStatement)st;
+				//pull the initial assignment out
+				toAdd.add(new AssignmentStatement(FOR, FOR.line, FOR.initLoc, Op.Type.assign, FOR.initExpr));
+				//NOTE: since initLoc and initExpr are null, we can't run semantics any more
+				FOR.initLoc = null;
+				FOR.initExpr = null;
 				if(!isAtomicExpr(FOR.condition)) {
 					LocationNoArray tempLoc = exprToTempVar(block, FOR.condition.getT(), FOR.condition);
 					FOR.calcCondition = new ArrayList<>();
@@ -1206,7 +1236,7 @@ public class IR {
 			i += toAdd.size();
 		}
 		
-		//extract method calls from exprs and exprs from method calls
+		//decouple method calls/exprs/arrays
 		separateCallsAndExprAndArray(block, block, block.statements);
 		for(int i=0; i<block.statements.size(); i++) {
 			Statement st = block.statements.get(i);
@@ -1234,6 +1264,14 @@ public class IR {
 			}
 		}
 	}
+	/**
+	 * Final guaranteed Expr format:
+	 * atomic -> LocationNoArray | Literal
+	 * Expr -> (atomic Op atomic) | (Op atomic) | atomic | LocationArray[atomic] | method_call
+	 * method_call -> MethodName(atomic*)
+	 * If/For/While/Return expr -> atomic
+	 * AssignmentStatement -> (atomic | LocationArray[atomic]) ((-- | ++) | ((+= | -=) atomic) | (= basic))
+	 */
 	private void postprocess() {
 		IRTraverser irTraverser = new IRTraverser(this);
 		while(irTraverser.hasNext()) {
@@ -1250,7 +1288,7 @@ public class IR {
 	public void simplifyExpr() { //CALL AFTER SEMANTICS
 		tempExpr = new HashMap<>();
 		IRTraverser irTraverser = new IRTraverser(this);
-		List<Block> blocks = new ArrayList<>();;
+		List<Block> blocks = new ArrayList<>();
 		while(irTraverser.hasNext()) {
 			IR.Node _node = irTraverser.getNext();
 			if(_node instanceof Block)

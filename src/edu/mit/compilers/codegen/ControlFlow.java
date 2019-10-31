@@ -6,7 +6,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import edu.mit.compilers.codegen.ControlFlow.CFBranch;
 import edu.mit.compilers.semantics.IR;
 
 public class ControlFlow {
@@ -57,7 +56,8 @@ public class ControlFlow {
 			super(null, _node.line);
 			IR.MethodDecl node = (IR.MethodDecl)_node;
 			addFieldsMethodParams(node.params);
-			CFEndMethod end = new CFEndMethod(this, -1);
+			CFEndMethod end = new CFEndMethod(this, -1, node.type!=IR.IRType.void_);
+			if(node.type != IR.IRType.void_)
 			next = makeBlock(node.block, this, end, null, null);
 		}
 	}
@@ -105,8 +105,9 @@ public class ControlFlow {
 			}
 			else if(i instanceof IR.ForStatement) {
 				IR.ForStatement FOR = (IR.ForStatement)i;
-				cur.next = new CFAssignment(pushScope, i.line, FOR.initLoc, FOR.initExpr);
-				cur = cur.next;
+				//we already pull out the initial for assignment while postprocessing the IR
+				/*cur.next = new CFAssignment(pushScope, i.line, FOR.initLoc, FOR.initExpr);
+				cur = cur.next;*/
 				cur.next = new CFNop(pushScope, i.line);
 				cur = cur.next;
 				CFStatement loopBackTo = cur;
@@ -201,8 +202,10 @@ public class ControlFlow {
 		}
 	}
 	public class CFEndMethod extends CFNop {
-		public CFEndMethod(CFPushScope scope, int line) {
+		public boolean badMethodEnd;
+		public CFEndMethod(CFPushScope scope, int line, boolean badMathodEnd) {
 			super(scope, line);
+			this.badMethodEnd = badMethodEnd;
 		}
 	}
 	public class CFMergeBranch extends CFNop {
@@ -303,66 +306,9 @@ public class ControlFlow {
 				this.params.add(i);
 		}
 	}
-	private int tempExprCount;
-	private Map<IR.Expr, String> tempExpr;
-	private String getTempVar(IR.Expr node) {
-		if(!tempExpr.containsKey(node)) {
-			String name = "@temp" + tempExprCount;
-			tempExpr.put(node, name);
-			return name;
-		}
-		return tempExpr.get(node);
-	}
-	private CFStatement breakUpExprBool(CFStatement inCFS, IR.Expr expr) {
-		CFStatement cur = new CFNop(inCFS.scope, inCFS.line);
-		CFStatement start = cur;
-		if(expr.members.size() == 2) {
-			
-		}
-		return start;
-	}
-	private CFStatement breakUpCFSExpr(CFStatement CFS) {
-		if(CFS instanceof CFBranch) {
-			CFBranch CFB = (CFBranch)CFS;
-			return breakUpExprBool(CFB, CFB.condition);
-		}
-		else if(CFS instanceof CFAssignment) {
-			CFAssignment CFAS = (CFAssignment)CFS;
-			
-		}
-		return CFS;
-	}
-	private void postprocessExpr(CFStatement CFS, CFStatement stop) {
-		if(CFS==null || CFS==stop)
-			return;
-		
-		else if(CFS instanceof CFContainer) {
-			CFContainer CFSC = (CFContainer)CFS;
-			CFSC.start = breakUpCFSExpr(CFSC.start);
-			CFSC.next = breakUpCFSExpr(CFSC.next);
-			postprocessExpr(CFSC.start, CFSC.next);
-			postprocessExpr(CFSC.next, stop);
-		}
-		else if(CFS instanceof CFBranch) {
-			CFBranch CFB = (CFBranch)CFS;
-			CFB.next = breakUpCFSExpr(CFB.next);
-			CFB.next2 = breakUpCFSExpr(CFB.next2);
-			postprocessExpr(CFB.next, stop);
-			postprocessExpr(CFB.next2, stop);
-		}
-		else {
-			CFS.next = breakUpCFSExpr(CFS.next);
-			postprocessExpr(CFS.next, stop);
-		}
-	}
 	public void build() {
 		methods = new LinkedHashMap<>();
 		importMethods = new LinkedHashMap<>();
 		program = new CFProgram(ir.root);
-		tempExprCount = 0;
-		
-		tempExpr = new HashMap<>();
-		for(Map.Entry<String, MethodSym> i: methods.entrySet())
-			postprocessExpr(i.getValue().code, null);
 	}
 }
