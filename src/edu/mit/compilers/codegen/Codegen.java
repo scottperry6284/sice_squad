@@ -29,9 +29,9 @@ public class Codegen {
 	
 	public static class Asm {
 		public enum Op { //newline is just whitespace for formatting
-			methodlabel, label, pushq, movq, popq, add, sub, ret, custom, newline, xor, call,
-			jz, jnz, test, inc, dec, cmp, jmp, not, neg, string, align, mul, div, and, or, leaq,
-			sete, setne, setge, setle, setg, setl, jne, mov, addq, subq, idivq, imulq, andq, orq, movzx;
+			methodlabel, label, pushq, movq, popq, ret, custom, newline, xor, call,
+			jz, jnz, test, inc, dec, cmp, jmp, not, neg, string, align, imul, idiv, and, or, leaq,
+			sete, setne, setge, setle, setg, setl, jne, mov, addq, subq, andq, orq, movzx;
 		}
 		public Op op;
 		public String arg1, arg2;
@@ -93,7 +93,7 @@ public class Codegen {
 		String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
 
 		Boolean importMethod = CF.importMethods.containsKey(CFMC.ID);
-		
+		//TODO: push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
 		for (int i = 0; i < CFMC.params.size(); i++) {
 
 			Object param = CFMC.params.get(i).val;
@@ -116,7 +116,7 @@ public class Codegen {
 				}
 
 			} else {
-				IR.Node paramCast = (Expr) param;
+				IR.Node paramCast = ((Expr) param).members.get(0);
 		
 				if (paramCast instanceof IR.LocationNoArray) {
 
@@ -178,19 +178,17 @@ public class Codegen {
 		while(scope != null) {
 			if(scope.variables.containsKey(name)) {
 				if(loc instanceof IR.LocationArray)
-					return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)"; //TODO: deal with arrays
+					return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
 				else return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
 			}
-			stackOffset += scope.stackOffset + ControlFlow.wordSize; //+8 because we push rbp every scope
+			if(scope.stackOffset != 0)
+				stackOffset += scope.stackOffset + ControlFlow.wordSize; //+wordSize because we push rbp if stackOffset!=0
 			scope = scope.parent;
 		}
-		//it"s in the global scope
+		//it's in the global scope
 		if(!CF.program.variables.containsKey(name))
 			throw new IllegalStateException("Variable with name \"" + name + "\" not found in any scope");
 		return CF.program.variables.get(name).stackOffset + "(globalvar)";
-	}
-	private String getVarVal(IR.Location loc, CFPushScope scope) {
-		return "[" + getVarLoc(loc, scope) + "]";
 	}
 	private void processCFS(CFStatement CFS) {
 		/*for(int i=0; i<CFS.scope.depth; i++)
@@ -473,7 +471,7 @@ public class Codegen {
 					IR.LocationNoArray cm2 = (IR.LocationNoArray) cm; 
 					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(cm2, scope), "%rsi"));	
 					asmOutput.add(new Asm(Asm.Op.movq, "$16", "%rax"));
-					asmOutput.add(new Asm(Asm.Op.imulq, "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.imul, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rax", "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.addq, "%rsi", "%rdi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "[%rdi]", "%rdi"));
@@ -570,17 +568,17 @@ public class Codegen {
 				}
 				if (ctype == IR.Op.Type.mult){
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", "%rax"));
-					asmOutput.add(new Asm(Asm.Op.imulq, "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.imul, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rax", "%rdi")); 	
 				}
 				if (ctype == IR.Op.Type.div){
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", "%rax"));
-					asmOutput.add(new Asm(Asm.Op.idivq, "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.idiv, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rax", "%rdi"));
 				}
 				if (ctype == IR.Op.Type.mod){
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", "%rax"));
-					asmOutput.add(new Asm(Asm.Op.idivq, "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.idiv, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdx", "%rdi"));
 				}
 				if (ctype == IR.Op.Type.andand){
