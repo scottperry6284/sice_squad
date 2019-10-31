@@ -601,22 +601,22 @@ public class Codegen {
 					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype == IR.Op.Type.greater){
-					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.cmp, "%rsi", "%rdi"));
 					asmOutput.add(new Asm(Asm.Op.setg, "%al"));
 					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype ==  IR.Op.Type.less){
-					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.cmp, "%rsi", "%rdi"));
 					asmOutput.add(new Asm(Asm.Op.setl, "%al"));
 					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype ==  IR.Op.Type.geq){
-					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.cmp, "%rsi", "%rdi"));
 					asmOutput.add(new Asm(Asm.Op.setge, "%al"));
 					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype == IR.Op.Type.leq){
-					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.cmp, "%rsi", "%rdi"));
 					asmOutput.add(new Asm(Asm.Op.setle, "%al"));
 					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
