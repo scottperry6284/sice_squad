@@ -293,13 +293,9 @@ public class Codegen {
 		}
 	}
 	private List<CFStatement> CFOrder;
-	private Set<CFStatement> addedCF;
 	private void genCFOrder(CFStatement CFS, CFMergeBranch stop) {
-		if(CFS==null || CFS==stop)
+		if(CFS==null || CFS==stop || CFS.orderpos!=-1)
 			return;
-		if(addedCF.contains(CFS))
-			throw new IllegalStateException("Duplicate CFS");
-		addedCF.add(CFS);
 		CFS.orderpos = CFOrder.size();
 		CFOrder.add(CFS);
 		if(CFS instanceof CFContainer) {
@@ -330,7 +326,6 @@ public class Codegen {
 	public void build() {
 		asmOutput = new ArrayList<>();
 		addedStrings = new HashMap<>();
-		addedCF = new HashSet<>();
 		
 		labelCount = 0;
 		labels = new HashMap<>();
