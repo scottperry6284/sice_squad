@@ -33,4 +33,4 @@ for INPUT_FILE in $(dirname $0)/legal/*; do
   count_all=$(( count_all + 1 ))
 done
 
-echo -e "\nPASSED $count_pass / $count_all"
+echo -e "\nSemantics: PASSED $count_pass / $count_all"

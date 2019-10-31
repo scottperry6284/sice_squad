@@ -18,18 +18,13 @@ trap finish INT TERM HUP EXIT
 
 # &1 -> all input decaf files that should run without an error
 function get-input-files-should-pass {
-  find "$ROOT/tests/codegen/input/" -type f -name "*.dcf"
-}
-
-# &1 -> all input decaf files that are expected to throw an error
-function get-input-files-should-fail {
-  find "$ROOT/tests/codegen/error/" -type f -name "*.dcf"
+  find "$ROOT/tests/dataflow/input/" -type f -name "*.dcf"
 }
 
 # $1 -> decaf file to compile
 # $2 -> assembly file to create
 function dcf-to-asm {
-  "$RUNNER" --target=assembly "$1" -o "$2"
+  "$RUNNER" --target=assembly --opt=all "$1" -o "$2"
 }
 
 # $1 -> assembly file to assemble
@@ -41,12 +36,17 @@ function asm-to-exec {
 # $1 -> path
 # &1 -> basename along with the immediate parent directory name
 function clean {
-  sed -E 's/^.+codegen\///' <<< "$1"
+  sed -E 's/^.+dataflow\///' <<< "$1"
 }
 
 # run the downloaded parallel executable
 function par {
-  "$ROOT/parallel" --eta --max-procs 8 $@
+  "$ROOT/tests/parallel" --eta --max-procs 8 $@
+}
+
+# benchmark with hyperfine
+function fine {
+  "$ROOT/tests/hyperfine" --warmup 4 "$@"
 }
 
 # $1 -> dcf input file
@@ -62,6 +62,7 @@ function test-runner {
   #  declare -r TEMP_ASM="$TMPDIR/$(basename "$DCF_FILE")/main.s"
   declare -r TEMP_ASM="$TMPDIR/$(basename "$DCF_FILE").s"
   declare -r TEMP_BIN="$TMPDIR/$(basename "$DCF_FILE").exec"
+
   declare -r TEMP_OUT="$TMPDIR/$(basename "$DCF_FILE").out"
 
   if dcf-to-asm "$DCF_FILE" "$TEMP_ASM" &> /dev/null; then     # dcf -> asm
@@ -103,40 +104,14 @@ function test-should-pass {
   esac
 }
 
-# $1 -> dcf input file
-# &1 -> 'TESTCASE-PASS' if a runtime error is thrown, nothing otherwise
-function test-should-fail {
-  declare -r DCF_FILE="$1"
-  declare -r CLEANED="$(clean "$DCF_FILE")"
-
-  test-runner "$DCF_FILE"
-  declare -r CODE=$?
-
-  case $CODE in
-    1) green "successfully threw a runtime error -- '$CLEANED'" ;
-       echo 'TESTCASE-PASS'                                     ;;
-    3) red "your compiler threw an error -- '$CLEANED'"         ;;
-    *) red "failed to throw a runtime error -- '$CLEANED'"      ;;
-  esac
-}
-
 # directory to hold all temporary values
 declare -r TMPDIR="$ROOT/.dcf-tmp"
 # 0 if we should run parallel 1 if sequential
-declare -r RUN_PARALLEL=$( grep -Pq '^--parallel$' <<< "$1" && echo 0 || echo 1 )
+declare -r RUN_PARALLEL=$( echo $1 $2 | grep -Pq 'parallel' && echo 0 || echo 1 )
 
 # functions and globals to use in functions
 export TMPDIR
-export -f dcf-to-asm asm-to-exec test-runner test-should-pass test-should-fail clean
-
-if [[ "$RUN_PARALLEL" -eq 0 ]]; then
-  # download gnu parallel
-  if ! [[ -f "$ROOT/parallel" ]]; then
-    wget -O - 'http://git.savannah.gnu.org/cgit/parallel.git/plain/src/parallel' > "$ROOT/parallel"
-    chmod +x "$ROOT/parallel"
-  fi
-  "$ROOT/parallel" --version
-fi
+export -f dcf-to-asm asm-to-exec test-runner test-should-pass clean
 
 # create fresh for every run
 mkdir -p "$TMPDIR"
@@ -155,23 +130,8 @@ declare -r COUNT_PASS_NO_ERROR=$(
     fi |
     grep -c 'TESTCASE-PASS'
 )
-# number of tests that are supposed to throw an error and passed
-declare -r COUNT_PASS_ERROR=$(
-  get-input-files-should-fail |
-    if [[ "$RUN_PARALLEL" -eq 0 ]]; then
-      par 'test-should-fail {}' <&0
-    else 
-      while read INPUT_FILE; do
-        test-should-fail "$INPUT_FILE"
-      done <&0
-    fi |
-    grep -c 'TESTCASE-PASS'
-)
 
 # number of all tests
-declare -r COUNT_ALL=$(
- { get-input-files-should-pass; get-input-files-should-fail; } | wc -l
-)
+declare -r COUNT_ALL=$( get-input-files-should-pass | wc -l )
 
-green "\nCodeGen: PASSED $(( COUNT_PASS_NO_ERROR + COUNT_PASS_ERROR )) / $COUNT_ALL"
-
+green "\nDataflow: PASSED $(( COUNT_PASS_NO_ERROR )) / $COUNT_ALL"
