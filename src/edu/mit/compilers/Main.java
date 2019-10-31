@@ -1,6 +1,11 @@
 package edu.mit.compilers;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
+
 import antlr.Token;
 import edu.mit.compilers.codegen.Codegen;
 import edu.mit.compilers.codegen.ControlFlow;
@@ -129,10 +134,21 @@ token.getType() != DecafParserTokenTypes.EOF;
 	    	  irbuilder.build();
 	    	  ScottSemantics.RootCheck(irbuilder.root); 
 	    	  irbuilder.simplifyExpr();
+	    	  //irbuilder.root.print();
+	    	  //System.out.println("");
 	    	  ControlFlow CF = new ControlFlow(irbuilder);
 	    	  CF.build();
+	    	  //System.out.println("");
 	    	  Codegen CG = new Codegen(CF);
 	    	  CG.build();
+	    	  List<String> asm = CG.getAsm();
+	    	  if(CLI.outfile == null) {
+	    		  for(String i: asm)
+	    			  System.out.print(i);
+	    	  }
+	    	  else {
+	    		  Files.write(Paths.get(CLI.outfile), asm, StandardCharsets.UTF_8);
+	    	  }
 	      }
 	      catch(Exception e) {
 	    	  e.printStackTrace();

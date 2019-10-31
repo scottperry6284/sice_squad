@@ -56,8 +56,10 @@ public class ControlFlow {
 			super(null, _node.line);
 			IR.MethodDecl node = (IR.MethodDecl)_node;
 			addFieldsMethodParams(node.params);
-			CFEndMethod end = new CFEndMethod(this, -1, node.type!=IR.IRType.void_);
-			if(node.type != IR.IRType.void_)
+			CFEndMethod end;
+			if(!node.ID.equals("main"))
+				end = new CFEndMethod(this, -1, node.type==IR.IRType.void_? MethodEnd.nothing: MethodEnd.error);
+			else end = new CFEndMethod(this, -1, MethodEnd.main);
 			next = makeBlock(node.block, this, end, null, null);
 		}
 	}
@@ -201,11 +203,14 @@ public class ControlFlow {
 			super(scope, line);
 		}
 	}
+	public enum MethodEnd {
+		nothing, error, main;
+	}
 	public class CFEndMethod extends CFNop {
-		public boolean badMethodEnd;
-		public CFEndMethod(CFPushScope scope, int line, boolean badMathodEnd) {
+		public MethodEnd end;
+		public CFEndMethod(CFPushScope scope, int line, MethodEnd end) {
 			super(scope, line);
-			this.badMethodEnd = badMethodEnd;
+			this.end = end;
 		}
 	}
 	public class CFMergeBranch extends CFNop {
@@ -297,7 +302,7 @@ public class ControlFlow {
 	}
 	public class CFMethodCall extends CFStatement {
 		public String ID;
-		public List<Object> params;
+		public List<IR.MethodParam> params;
 		public CFMethodCall(CFPushScope scope, int line, IR.MethodCall call) {
 			super(scope, line);
 			this.ID = call.ID;

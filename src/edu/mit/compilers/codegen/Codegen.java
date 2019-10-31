@@ -17,6 +17,7 @@ import edu.mit.compilers.codegen.ControlFlow.CFPushScope;
 import edu.mit.compilers.codegen.ControlFlow.CFReturn;
 import edu.mit.compilers.codegen.ControlFlow.CFContainer;
 import edu.mit.compilers.codegen.ControlFlow.CFStatement;
+import edu.mit.compilers.codegen.ControlFlow.MethodEnd;
 import edu.mit.compilers.semantics.IR;
 import edu.mit.compilers.semantics.IR.Expr;
 import edu.mit.compilers.semantics.IR.Op;
@@ -32,7 +33,7 @@ public class Codegen {
 		public enum Op { //newline is just whitespace for formatting
 			methodlabel, label, pushq, movq, popq, add, sub, ret, custom, newline, xor, call,
 			jz, jnz, test, inc, dec, cmp, jmp, not, neg, string, align, mul, div, and, or, leaq,
-			sete, setne, setge, setle, setg, setl, jne;
+			sete, setne, setge, setle, setg, setl, jne, mov;
 		}
 		public Op op;
 		public String arg1, arg2;
@@ -92,13 +93,13 @@ public class Codegen {
 	private void executeMethod(CFStatement CFS) {
 		CFMethodCall CFMC = (CFMethodCall) CFS;
 
-		String[] CCallRegs = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+		String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
 
 		Boolean importMethod = CF.importMethods.containsKey(CFMC.ID);
 		
 		for (int i = 0; i < CFMC.params.size(); i++) {
 
-			Object param = CFMC.params.get(i);
+			Object param = CFMC.params.get(i).val;
 
 			// Put all of the strings in a seperate list.
 			if (param instanceof String) {
@@ -129,8 +130,7 @@ public class Codegen {
 				}
 
 			} else {
-
-				IR.Node paramCast = ((Expr) param).getChildren().get(0);
+				IR.Node paramCast = (Expr) param;
 		
 				if (paramCast instanceof IR.LocationNoArray) {
 
@@ -208,9 +208,10 @@ public class Codegen {
 		return "[" + getVarLoc(loc, scope) + "]";
 	}
 	private void processCFS(CFStatement CFS) {
-		for(int i=0; i<CFS.scope.depth; i++)
+		/*for(int i=0; i<CFS.scope.depth; i++)
 			System.out.print("  ");
-		System.out.println(CFS.getClass().getCanonicalName());
+		System.out.println(CFS.getClass().getSimpleName());*/
+		
 		writeAsmLabel(CFS);
 		if(CFS instanceof CFPushScope) { //or Method
 			CFPushScope CFPS = (CFPushScope)CFS;
@@ -221,11 +222,14 @@ public class Codegen {
 			}
 		}
 		else if(CFS instanceof CFEndMethod) {
+			CFEndMethod CFEM = (CFEndMethod)CFS;
 			if(CFS.scope.stackOffset > 0) {
 				asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
 				asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
 				asmOutput.add(new Asm(Asm.Op.add, "%rsp", "$" + CFS.scope.stackOffset));
 			}
+			if(CFEM.end == MethodEnd.main)
+				asmOutput.add(new Asm(Asm.Op.mov, "$0", "%rax"));
 			asmOutput.add(new Asm(Asm.Op.ret));
 		}
 		else if(CFS instanceof CFAssignment) {
@@ -404,9 +408,11 @@ public class Codegen {
 		
 		labelCount = 0;
 		labels = new HashMap<>();
-		//don"t add CF.program to scopes because it"s a special global scope
-		asmOutput.add(new Asm(Asm.Op.custom, ".comm globalvar, " + CF.program.stackOffset + ", 8"));
-		asmOutput.add(new Asm(Asm.Op.newline));
+		//don't add CF.program to scopes because it"s a special global scope
+		if(CF.program.stackOffset > 0) {
+			asmOutput.add(new Asm(Asm.Op.custom, ".comm globalvar, " + CF.program.stackOffset + ", 16"));
+			asmOutput.add(new Asm(Asm.Op.newline));
+		}
 		for(Map.Entry<String, ControlFlow.MethodSym> method: CF.methods.entrySet())
 			methodToAsm(method.getKey(), method.getValue());
 
@@ -415,18 +421,22 @@ public class Codegen {
 			if(i.op==Asm.Op.jz || i.op==Asm.Op.jmp || i.op==Asm.Op.jz)
 				usedLabels.add(i.arg1);
 		asmOutput.removeIf(x -> x.op==Asm.Op.label && !usedLabels.contains(x.arg1));
-		
-		System.out.println();
+	}
+	public List<String> getAsm() {
+		List<String> result = new ArrayList<>();
 		boolean indent = false;
 		for(Asm i: asmOutput) {
+			String to_add = new String();
 			if(indent)
-				System.out.print("\t");
-			System.out.println(i);
+				to_add += '\t';
+			to_add += i + "\n";
 			if(i.op == Asm.Op.newline)
 				indent = false;
 			else if(i.op == Asm.Op.methodlabel)
 				indent = true;
+			result.add(to_add);
 		}
+		return result;
 	}
 	public void addAssignmentStatement (CFAssignment inp){
 		CFPushScope scope = inp.scope;
