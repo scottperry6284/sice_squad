@@ -31,7 +31,7 @@ public class Codegen {
 		public enum Op { //newline is just whitespace for formatting
 			methodlabel, label, pushq, movq, popq, add, sub, ret, custom, newline, xor, call,
 			jz, jnz, test, inc, dec, cmp, jmp, not, neg, string, align, mul, div, and, or, leaq,
-			sete, setne, setge, setle, setg, setl, jne, mov, addq, subq, idivq, imulq, andq, orq;
+			sete, setne, setge, setle, setg, setl, jne, mov, addq, subq, idivq, imulq, andq, orq, movzx;
 		}
 		public Op op;
 		public String arg1, arg2;
@@ -131,7 +131,7 @@ public class Codegen {
 
 					IR.LocationNoArray paramCastLocationNoArray = (IR.LocationNoArray) paramCast;
 					
-					String varVal = getVarVal(paramCastLocationNoArray, CFS.scope);
+					String varVal = getVarLoc(paramCastLocationNoArray, CFS.scope);
 
 					if (importMethod && (i<=5)) {
 						asmOutput.add(new Asm(Asm.Op.movq, varVal, CCallRegs[i]));
@@ -239,7 +239,7 @@ public class Codegen {
 			// Just put the atomic return in rax.
 			if (paramCast instanceof IR.LocationNoArray) {
 				IR.LocationNoArray paramLocationNoArray = (IR.LocationNoArray) paramCast;
-				String varVal = getVarVal(paramLocationNoArray, CFS.scope);
+				String varVal = getVarLoc(paramLocationNoArray, CFS.scope);
 				asmOutput.add(new Asm(Asm.Op.movq, varVal, "%rax"));
 				
 			} else if (paramCast instanceof IR.BoolLiteral) {
@@ -263,7 +263,7 @@ public class Codegen {
 			IR.Expr expr = (IR.Expr) CFB.condition;
 
 			if (expr.getChildren().get(0) instanceof IR.LocationNoArray){
-				String varVal = getVarVal(((IR.LocationNoArray) expr.getChildren().get(0)), CFS.scope);
+				String varVal = getVarLoc(((IR.LocationNoArray) expr.getChildren().get(0)), CFS.scope);
 
 				asmOutput.add(new Asm(Asm.Op.cmp, varVal, "$1"));
 				// Jump to next2
@@ -398,7 +398,7 @@ public class Codegen {
 				}
 				else if (child2 instanceof IR.LocationNoArray){
 					IR.LocationNoArray c2 = (IR.LocationNoArray) child2; 
-					asmOutput.add(new Asm(Asm.Op.movq, getVarVal(c2, scope), "%rdi")); 
+					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi")); 
 					asmOutput.add(new Asm(Asm.Op.addq, "%rdi", location));
 				}				
 			}
@@ -412,7 +412,7 @@ public class Codegen {
 				}
 				else if (child2 instanceof IR.LocationNoArray){
 					IR.LocationNoArray c2 = (IR.LocationNoArray) child2; 
-					asmOutput.add(new Asm(Asm.Op.movq, getVarVal(c2, scope), "%rdi")); 
+					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi")); 
 					asmOutput.add(new Asm(Asm.Op.subq, "%rdi", location));
 				}				
 			}
@@ -424,7 +424,8 @@ public class Codegen {
 		if (child1 instanceof IR.Op){
 			IR.Op op = (IR.Op) child1; 
 			if (op.type == IR.Op.Type.minus){
-				IR.Node child2 = expr.members.get(1); 
+				IR.Expr lm2 = (IR.Expr)(expr.members.get(1)); 
+				IR.Node child2 = lm2.members.get(0); 
 				// rdi temp register
 				if (child2 instanceof IR.IntLiteral){
 					IR.IntLiteral c2 = (IR.IntLiteral) child2;
@@ -434,13 +435,14 @@ public class Codegen {
 				}
 				else if (child2 instanceof IR.LocationNoArray){
 					IR.LocationNoArray c2 = (IR.LocationNoArray) child2; 
-					asmOutput.add(new Asm(Asm.Op.movq, getVarVal(c2, scope), "%rdi")); 
+					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi")); 
 					asmOutput.add(new Asm(Asm.Op.neg, "%rdi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", location));
 				}
 			}
 			if (op.type == IR.Op.Type.not){
-				IR.Node child2 = expr.members.get(1); 
+				IR.Expr lm2 = (IR.Expr)(expr.members.get(1)); 
+				IR.Node child2 = lm2.members.get(0); 
 				// rdi temp register
 				if (child2 instanceof IR.BoolLiteral){
 					IR.BoolLiteral c2 = (IR.BoolLiteral) child2;
@@ -453,7 +455,7 @@ public class Codegen {
 				}
 				else if (child2 instanceof IR.LocationNoArray){
 					IR.LocationNoArray c2 = (IR.LocationNoArray) child2; 
-					asmOutput.add(new Asm(Asm.Op.movq, getVarVal(c2, scope), "%rdi")); 
+					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi")); 
 					asmOutput.add(new Asm(Asm.Op.neg, "%rdi"));
 					asmOutput.add(new Asm(Asm.Op.inc, "%rdi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", location));
@@ -467,7 +469,7 @@ public class Codegen {
 				if (cm instanceof IR.LocationNoArray){
 					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi"));
 					IR.LocationNoArray cm2 = (IR.LocationNoArray) cm; 
-					asmOutput.add(new Asm(Asm.Op.movq, getVarVal(cm2, scope), "%rsi"));	
+					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(cm2, scope), "%rsi"));	
 					asmOutput.add(new Asm(Asm.Op.movq, "$16", "%rax"));
 					asmOutput.add(new Asm(Asm.Op.imulq, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rax", "%rsi"));
@@ -475,12 +477,12 @@ public class Codegen {
 					asmOutput.add(new Asm(Asm.Op.movq, "[%rdi]", "%rdi"));
 				}
 				else{ 
-					asmOutput.add(new Asm(Asm.Op.movq, getVarVal(c2, scope), "%rdi"));
+					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi"));
 				}
 			}
 			if (child1 instanceof IR.LocationNoArray){
 				IR.LocationNoArray c2 = (IR.LocationNoArray) child1; 
-				asmOutput.add(new Asm(Asm.Op.movq, getVarVal(c2, scope), "%rdi"));
+				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi"));
 			}
 			if (child1 instanceof IR.BoolLiteral){
 				IR.BoolLiteral c2 = (IR.BoolLiteral) child1; 
@@ -505,33 +507,35 @@ public class Codegen {
 		}
 		else{
 			IR.Op child2 = (IR.Op) (expr.members.get(1));
-			IR.Node child3 = expr.members.get(2);
-			if (child1 instanceof IR.LocationNoArray){
-				IR.LocationNoArray c2 = (IR.LocationNoArray) child1; 
-				asmOutput.add(new Asm(Asm.Op.movq, getVarVal(c2, scope), "%rdi"));
+			IR.Node chil1 = ((IR.Expr)(child1)).members.get(0); 
+			IR.Node child3 = ((IR.Expr)(expr.members.get(2))).members.get(0);
+			
+			if (chil1 instanceof IR.LocationNoArray){
+				IR.LocationNoArray c2 = (IR.LocationNoArray) chil1; 
+				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi"));
 			}
-			if (child1 instanceof IR.BoolLiteral){
-				IR.BoolLiteral c2 = (IR.BoolLiteral) child1; 
+			if (chil1 instanceof IR.BoolLiteral){
+				IR.BoolLiteral c2 = (IR.BoolLiteral) chil1; 
 				if (c2.value == true) 
 					asmOutput.add(new Asm(Asm.Op.movq, "$1", "%rdi"));
 				else
 					asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rdi"));
 			}
-			if (child1 instanceof IR.CharLiteral){
-				IR.CharLiteral c2 = (IR.CharLiteral) child1; 
+			if (chil1 instanceof IR.CharLiteral){
+				IR.CharLiteral c2 = (IR.CharLiteral) chil1; 
 				long vl = c2.value; 
 
 				asmOutput.add(new Asm(Asm.Op.movq, "$" + vl, "%rdi")); 
 			}
-			if (child1 instanceof IR.IntLiteral){
-				IR.IntLiteral c2 = (IR.IntLiteral) child1; 
+			if (chil1 instanceof IR.IntLiteral){
+				IR.IntLiteral c2 = (IR.IntLiteral) chil1; 
 				long vl = c2.value; 
 
 				asmOutput.add(new Asm(Asm.Op.movq, "$" + vl, "%rdi")); 
 			}
 			if (child3 instanceof IR.LocationNoArray){
 				IR.LocationNoArray c2 = (IR.LocationNoArray) child3; 
-				asmOutput.add(new Asm(Asm.Op.movq, getVarVal(c2, scope), "%rsi"));
+				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rsi"));
 			}
 			if (child3 instanceof IR.BoolLiteral){
 				IR.BoolLiteral c2 = (IR.BoolLiteral) child3; 
@@ -584,28 +588,34 @@ public class Codegen {
 					asmOutput.add(new Asm(Asm.Op.orq, "%rsi", "%rdi"));
 				}			
 				if (ctype == IR.Op.Type.eq){
-					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
-					asmOutput.add(new Asm(Asm.Op.sete, "%rdi"));
+					asmOutput.add(new Asm(Asm.Op.cmp, "i64 %rdi", "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.sete, "%al"));
+					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype == IR.Op.Type.neq){
 					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
-					asmOutput.add(new Asm(Asm.Op.setne, "%rdi"));
+					asmOutput.add(new Asm(Asm.Op.setne, "%al"));
+					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype == IR.Op.Type.greater){
 					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
-					asmOutput.add(new Asm(Asm.Op.setg, "%rdi"));
+					asmOutput.add(new Asm(Asm.Op.setg, "%al"));
+					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype ==  IR.Op.Type.less){
 					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
-					asmOutput.add(new Asm(Asm.Op.setl, "%rdi"));
+					asmOutput.add(new Asm(Asm.Op.setl, "%al"));
+					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype ==  IR.Op.Type.geq){
 					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
-					asmOutput.add(new Asm(Asm.Op.setge, "%rdi"));
+					asmOutput.add(new Asm(Asm.Op.setge, "%al"));
+					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 				if (ctype == IR.Op.Type.leq){
 					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
-					asmOutput.add(new Asm(Asm.Op.setle, "%rdi"));
+					asmOutput.add(new Asm(Asm.Op.setle, "%al"));
+					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
 			}
 			asmOutput.add(new Asm(Asm.Op.movq, "%rdi", location));			
