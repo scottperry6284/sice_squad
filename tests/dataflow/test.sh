@@ -134,4 +134,4 @@ declare -r COUNT_PASS_NO_ERROR=$(
 # number of all tests
 declare -r COUNT_ALL=$( get-input-files-should-pass | wc -l )
 
-green "\nPASSED $(( COUNT_PASS_NO_ERROR )) / $COUNT_ALL"
+green "\nDataflow: PASSED $(( COUNT_PASS_NO_ERROR )) / $COUNT_ALL"

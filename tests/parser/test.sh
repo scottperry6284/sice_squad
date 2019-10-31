@@ -34,4 +34,4 @@ for INPUT_FILE in "$(dirname $0)"/legal/*; do
   fi
 done
 
-echo -e "\nPASSED $count_pass / $count_all"
+echo -e "\nParser: PASSED $count_pass / $count_all"

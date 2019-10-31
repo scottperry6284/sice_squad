@@ -173,5 +173,5 @@ declare -r COUNT_ALL=$(
  { get-input-files-should-pass; get-input-files-should-fail; } | wc -l
 )
 
-green "\nPASSED $(( COUNT_PASS_NO_ERROR + COUNT_PASS_ERROR )) / $COUNT_ALL"
+green "\nCodeGen: PASSED $(( COUNT_PASS_NO_ERROR + COUNT_PASS_ERROR )) / $COUNT_ALL"
 
