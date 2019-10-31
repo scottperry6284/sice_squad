@@ -474,7 +474,7 @@ public class Codegen {
 					asmOutput.add(new Asm(Asm.Op.imul, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rax", "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.addq, "%rsi", "%rdi"));
-					asmOutput.add(new Asm(Asm.Op.movq, "[%rdi]", "%rdi"));
+					asmOutput.add(new Asm(Asm.Op.movq, "(%rdi)", "%rdi"));
 				}
 				else{ 
 					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi"));
@@ -573,11 +573,13 @@ public class Codegen {
 				}
 				if (ctype == IR.Op.Type.div){
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", "%rax"));
+					asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rdx"));
 					asmOutput.add(new Asm(Asm.Op.idiv, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rax", "%rdi"));
 				}
 				if (ctype == IR.Op.Type.mod){
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", "%rax"));
+					asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rdx"));
 					asmOutput.add(new Asm(Asm.Op.idiv, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdx", "%rdi"));
 				}
