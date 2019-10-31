@@ -918,6 +918,10 @@ public class IR {
 			Op.Type.div, Op.Type.mod};
 	private final Op.Type[] unaryOpExprPrecedence = new Op.Type[] {Op.Type.minus, Op.Type.not};
 	private void parseExpr(Expr expr) {
+		if(expr.members.size()==1 && (expr.members.get(0) instanceof Expr)) {
+			parseExpr((Expr)expr.members.get(0));
+			return;
+		}
 		for(Op.Type cur: binOpExprPrecedence) {
 			for(int i=0; i<expr.members.size(); i++) {
 				Node _node = expr.members.get(i);
@@ -1273,16 +1277,23 @@ public class IR {
 	 * AssignmentStatement -> (atomic | LocationArray[atomic]) ((-- | ++) | ((+= | -=) atomic) | (= basic))
 	 */
 	private void postprocess() {
-		IRTraverser irTraverser = new IRTraverser(this);
-		while(irTraverser.hasNext()) {
-			IR.Node _node = irTraverser.getNext();
-			if(_node instanceof Expr) {
-				Expr expr = (Expr)_node;
-				//turn expressions into trees that obey order of operations
-				parseExpr(expr);
-				//modify nesting so that expression trees obey the grammar and remove unnecessary parentheses
-				fixNesting(expr);
-			}
+		List<Expr> exprs = new ArrayList<>();
+		Queue<IR.Node> nodes = new ArrayDeque<>(); 
+		nodes.add(root);
+		while(!nodes.isEmpty()) {
+			IR.Node _node = nodes.poll();
+			if(_node instanceof Expr)
+				exprs.add((Expr)_node);
+			if(_node.getChildren() != null)
+				for(IR.Node child: _node.getChildren())
+					nodes.add(child);
+		}
+		Collections.reverse(exprs);
+		for(Expr expr: exprs) {
+			//turn expressions into trees that obey order of operations
+			parseExpr(expr);
+			//modify nesting so that expression trees obey the grammar and remove unnecessary parentheses
+			fixNesting(expr);
 		}
 	}
 	public void simplifyExpr() { //CALL AFTER SEMANTICS

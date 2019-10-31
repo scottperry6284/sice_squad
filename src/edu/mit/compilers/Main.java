@@ -133,6 +133,7 @@ token.getType() != DecafParserTokenTypes.EOF;
 	    	  IR irbuilder = new IR(parseTree);
 	    	  irbuilder.build();
 	    	  ScottSemantics.RootCheck(irbuilder.root); 
+	    	  //irbuilder.root.print();
 	    	  irbuilder.simplifyExpr();
 	    	  //irbuilder.root.print();
 	    	  //System.out.println("");

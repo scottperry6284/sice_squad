@@ -76,7 +76,6 @@ public class ControlFlow {
 			else if(i instanceof IR.IfStatement) {
 				IR.IfStatement IF = (IR.IfStatement)i;
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
-				
 				CFContainer box = new CFContainer(pushScope, i.line);
 				if(IF.elseBlock == null)
 					box.start = shortCircuit(IF.condition, pushScope, makeBlock(IF.block, pushScope, end, breakCFS, continueCFS), end);
@@ -157,7 +156,7 @@ public class ControlFlow {
 			branch.next = ifTrue;
 			branch.next2 = ifFalse;
 		}
-		else if(condition.members.size() == 2) {
+		/*else if(condition.members.size() == 2) {
 			IR.Node node = condition.members.get(0);
 			if(node instanceof IR.Op) {
 				IR.Op op = (IR.Op)node;
@@ -183,8 +182,8 @@ public class ControlFlow {
 				}
 			}
 			else throw new IllegalStateException("Unrecognized Op");
-		}
-		else throw new IllegalStateException("Expr with too many children: count = " + condition.members.size());
+		}*/
+		else throw new IllegalStateException("Expr with wrong number of children: count = " + condition.members.size());
 		return branch;
 	}
 	public abstract class CFStatement {

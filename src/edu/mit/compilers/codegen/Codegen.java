@@ -70,15 +70,6 @@ public class Codegen {
 	}
 	private long labelCount;
 	private Map<CFStatement, String> labels;
-	private void writeAsmLabel(CFStatement CFS) {
-		if(!labels.containsKey(CFS)) {
-			String label = "label" + labelCount;
-			labels.put(CFS, label);
-			labelCount++;
-			asmOutput.add(new Asm(Asm.Op.label, label));
-		}
-		else asmOutput.add(new Asm(Asm.Op.label, labels.get(CFS))); //a label"s already been created for this
-	}
 	private String getLabel(CFStatement CFS) {
 		if(!labels.containsKey(CFS)) {
 			String label = "label" + labelCount;
@@ -196,7 +187,7 @@ public class Codegen {
 		//it"s in the global scope
 		if(!CF.program.variables.containsKey(name))
 			throw new IllegalStateException("Variable with name \"" + name + "\" not found in any scope");
-		return CF.program.variables.get(name).stackOffset + "(%globalvar)";
+		return CF.program.variables.get(name).stackOffset + "(globalvar)";
 	}
 	private String getVarVal(IR.Location loc, CFPushScope scope) {
 		return "[" + getVarLoc(loc, scope) + "]";
@@ -206,7 +197,7 @@ public class Codegen {
 			System.out.print("  ");
 		System.out.println(CFS.getClass().getSimpleName());*/
 		
-		writeAsmLabel(CFS);
+		asmOutput.add(new Asm(Asm.Op.label, getLabel(CFS)));
 		if(CFS instanceof CFPushScope) { //or Method
 			CFPushScope CFPS = (CFPushScope)CFS;
 			if(CFPS.stackOffset > 0) {
@@ -264,15 +255,17 @@ public class Codegen {
 
 			if (expr.getChildren().get(0) instanceof IR.LocationNoArray){
 				String varVal = getVarLoc(((IR.LocationNoArray) expr.getChildren().get(0)), CFS.scope);
-
-				asmOutput.add(new Asm(Asm.Op.cmp, varVal, "$1"));
-				// Jump to next2
+				
+				asmOutput.add(new Asm(Asm.Op.movq, varVal, "%rdi"));
+				asmOutput.add(new Asm(Asm.Op.movq, "$1", "%rsi"));
+				asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
+				// Jump to next2 if false
 				asmOutput.add(new Asm(Asm.Op.jne, getLabel(CFB.next2)));
 
 			} else if (expr.getChildren().get(0) instanceof IR.BoolLiteral){
-				if (((IR.BoolLiteral) expr.getChildren().get(0)).value) {
-					// Jump to next2
-					asmOutput.add(new Asm(Asm.Op.jne, getLabel(CFB.next2)));
+				if (((IR.BoolLiteral) expr.getChildren().get(0)).value == false) {
+					// Jump to next2 unconditionally (it's false)
+					asmOutput.add(new Asm(Asm.Op.jmp, getLabel(CFB.next2)));
 				}
 			}
 		}
@@ -296,14 +289,18 @@ public class Codegen {
 				}
 			}
 			if(CFS.next.orderpos != CFS.orderpos+1) {
-				asmOutput.add(new Asm(Asm.Op.jmp, labels.get(CFS.next)));
+				asmOutput.add(new Asm(Asm.Op.jmp, getLabel(CFS.next)));
 			}
 		}
 	}
 	private List<CFStatement> CFOrder;
+	private Set<CFStatement> addedCF;
 	private void genCFOrder(CFStatement CFS, CFMergeBranch stop) {
 		if(CFS==null || CFS==stop || CFS.orderpos!=-1)
 			return;
+		if(addedCF.contains(CFS))
+			throw new IllegalStateException("Duplicate CFS");
+		addedCF.add(CFS);
 		CFS.orderpos = CFOrder.size();
 		CFOrder.add(CFS);
 		if(CFS instanceof CFContainer) {
@@ -334,6 +331,7 @@ public class Codegen {
 	public void build() {
 		asmOutput = new ArrayList<>();
 		addedStrings = new HashMap<>();
+		addedCF = new HashSet<>();
 		
 		labelCount = 0;
 		labels = new HashMap<>();
@@ -347,7 +345,7 @@ public class Codegen {
 
 		Set<String> usedLabels = new HashSet<>();
 		for(Asm i: asmOutput)
-			if(i.op==Asm.Op.jz || i.op==Asm.Op.jmp || i.op==Asm.Op.jz)
+			if(i.op==Asm.Op.jz || i.op==Asm.Op.jmp || i.op==Asm.Op.jz || i.op==Asm.Op.jne)
 				usedLabels.add(i.arg1);
 		asmOutput.removeIf(x -> x.op==Asm.Op.label && !usedLabels.contains(x.arg1));
 	}
@@ -377,16 +375,20 @@ public class Codegen {
 	}
 	public void addAssignmentStatement (CFAssignment inp){
 		CFPushScope scope = inp.scope;
-		String location = getVarLoc (inp.loc, scope); 
+		String location = getVarLoc (inp.loc, scope);
 		IR.Op top = inp.op; 
 		IR.Op.Type t_op = top.type; 
 		IR.Expr expr = inp.expr; 
 		if (t_op != IR.Op.Type.assign){
 			if (t_op == IR.Op.Type.increment){
-				asmOutput.add(new Asm(Asm.Op.inc, location));
+				asmOutput.add(new Asm(Asm.Op.movq, location, "%rdi")); 
+				asmOutput.add(new Asm(Asm.Op.inc, "%rdi"));
+				asmOutput.add(new Asm(Asm.Op.movq, "%rdi", location)); 
 			}
 			else if (t_op == IR.Op.Type.decrement){
-				asmOutput.add(new Asm(Asm.Op.dec, location));
+				asmOutput.add(new Asm(Asm.Op.movq, location, "%rdi")); 
+				asmOutput.add(new Asm(Asm.Op.dec, "%rdi"));
+				asmOutput.add(new Asm(Asm.Op.movq, "%rdi", location)); 
 			}
 			else if (t_op == IR.Op.Type.plusequals){
 				IR.Node child2 = expr.members.get(0); 
@@ -588,7 +590,7 @@ public class Codegen {
 					asmOutput.add(new Asm(Asm.Op.orq, "%rsi", "%rdi"));
 				}			
 				if (ctype == IR.Op.Type.eq){
-					asmOutput.add(new Asm(Asm.Op.cmp, "i64 %rdi", "%rsi"));
+					asmOutput.add(new Asm(Asm.Op.cmp, "%rdi", "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.sete, "%al"));
 					asmOutput.add(new Asm(Asm.Op.movzx, "%al", "%rdi"));
 				}
