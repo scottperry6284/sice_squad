@@ -223,7 +223,7 @@ public class Codegen {
 			}
 		}
 		else if(CFS instanceof CFEndMethod) {
-			CFEndMethod CFEM = (CFEndMethod)CFS;
+			/*CFEndMethod CFEM = (CFEndMethod)CFS;
 			if(CFS.scope.stackOffset > 0) {
 				asmOutput.add(new Asm(Asm.Op.addq, "$" + CFS.scope.stackOffset, "%rsp"));
 				asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
@@ -231,7 +231,12 @@ public class Codegen {
 			}
 			if(CFEM.end == MethodEnd.main)
 				asmOutput.add(new Asm(Asm.Op.mov, "$0", "%rax"));
-			asmOutput.add(new Asm(Asm.Op.ret));
+			asmOutput.add(new Asm(Asm.Op.ret));*/
+			return;
+		}
+		else if(CFS instanceof CFContainer) {
+			return; //don't add jumps/scopes for CFContainer
+			// Nothing to do.
 		}
 		else if(CFS instanceof CFAssignment) {
 			addAssignmentStatement((CFAssignment)CFS);
@@ -241,21 +246,34 @@ public class Codegen {
 			executeMethod(CFMC.call, CFMC.scope);
 		}
 		else if(CFS instanceof CFReturn) {
-
-			IR.Node paramCast = ((Expr) ((CFReturn) CFS).expr).getChildren().get(0);
-			
-			// Just put the atomic return in rax.
-			if (paramCast instanceof IR.LocationNoArray) {
-				IR.LocationNoArray paramLocationNoArray = (IR.LocationNoArray) paramCast;
-				String varVal = getVarLoc(paramLocationNoArray, CFS.scope);
-				asmOutput.add(new Asm(Asm.Op.movq, varVal, "%rax"));
-				
-			} else if (paramCast instanceof IR.Literal) {
-				asmOutput.add(new Asm(Asm.Op.movq, "$" + ((IR.Literal)paramCast).val(), "%rax"));
-
-			} else {
-				;
+			//restore the stack
+			CFPushScope CFPS = CFS.scope;
+			while(CFPS!=null && CFPS.parent!=null) {
+				if(CFPS.stackOffset > 0) {
+					asmOutput.add(new Asm(Asm.Op.addq, "$" + CFPS.stackOffset, "%rsp"));
+					asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
+					asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
+				}
+				CFPS = CFPS.parent;
 			}
+			
+			IR.Expr expr = ((CFReturn)CFS).expr;
+			if(expr != null) {
+				IR.Node paramCast = (IR.Node)expr.getChildren().get(0);
+				
+				// Just put the atomic return in rax.
+				if (paramCast instanceof IR.LocationNoArray) {
+					IR.LocationNoArray paramLocationNoArray = (IR.LocationNoArray) paramCast;
+					String varVal = getVarLoc(paramLocationNoArray, CFS.scope);
+					asmOutput.add(new Asm(Asm.Op.movq, varVal, "%rax"));
+					
+				} else if (paramCast instanceof IR.Literal) {
+					asmOutput.add(new Asm(Asm.Op.movq, "$" + ((IR.Literal)paramCast).val(), "%rax"));
+				}
+				else throw new IllegalStateException("Bad return type " + paramCast.getClass().getSimpleName());
+			}
+			else asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rax")); //return 0 in main and why not as well in other void functions
+			asmOutput.add(new Asm(Asm.Op.ret));
 
 		} else if(CFS instanceof CFBranch) {
 			CFBranch CFB = (CFBranch)CFS;
@@ -278,10 +296,6 @@ public class Codegen {
 			}
 		}
 		else if(CFS instanceof CFNop) {
-			// Nothing to do.
-		}
-		else if(CFS instanceof CFContainer) {
-			return; //don't add jumps/scopes for CFContainer
 			// Nothing to do.
 		}
 		else throw new IllegalStateException("Unexpected CFS type: " + CFS.getClass().getCanonicalName());
