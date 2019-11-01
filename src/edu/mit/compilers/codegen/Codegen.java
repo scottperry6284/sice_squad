@@ -92,7 +92,7 @@ public class Codegen {
 		boolean importMethod = CF.importMethods.containsKey(call.ID);
 		if(!importMethod) {
 			if(call.params.size() > 0) {
-				long stackPos = -(call.params.size()+1) * ControlFlow.wordSize;
+				long stackPos = -(call.params.size()+2) * ControlFlow.wordSize;
 				for(IR.MethodParam i: call.params) {
 					IR.Node child0 = ((IR.Expr)i.val).members.get(0);
 					if(child0 instanceof IR.LocationNoArray) {
@@ -171,7 +171,7 @@ public class Codegen {
 		// Make method call.
 		asmOutput.add(new Asm(Asm.Op.call, call.ID));
 		
-		asmOutput.add(new Asm(Asm.Op.addq, "$8", "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.addq, "$8", "%rsp")); //jack said add, but I'm using addq
 		asmOutput.add(new Asm(Asm.Op.movq, "(%rsp)", "%rsp"));
 	}
 
