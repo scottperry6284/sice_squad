@@ -426,10 +426,11 @@ public class Codegen {
 	}
 	public void addAssignmentStatement (CFAssignment inp){
 		CFPushScope scope = inp.scope;
-		String location = getVarLoc (inp.loc, scope);
+		getVarLoc(inp.loc, scope);
 		IR.Op top = inp.op; 
 		IR.Op.Type t_op = top.type; 
 		IR.Expr expr = inp.expr; 
+		String location = getVarLoc(inp.loc, scope);
 		if (t_op != IR.Op.Type.assign){
 			if (t_op == IR.Op.Type.increment){
 				asmOutput.add(new Asm(Asm.Op.movq, location, "%rdi")); 

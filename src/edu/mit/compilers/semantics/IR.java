@@ -1018,37 +1018,37 @@ public class IR {
 		}
 		return tempExpr.get(expr);
 	}
-	private void dfsExtractMethodCalls(Expr e, List<Statement> toAdd, List<Statement> toProcess, Block blockpar, IR.Node parent) {
+	private void dfsExtractMethodCallsAndArray(Expr e, List<Statement> toAdd, List<Statement> toProcess, Block blockpar, IR.Node parent) {
 		if(e.members.size() == 3) {
 			Expr child0 = (Expr)e.members.get(0);
-			if(child0.members.size()==1 && (child0.members.get(0) instanceof MethodCall)) {	
+			if(child0.members.size()==1 && (child0.members.get(0) instanceof MethodCall) || (child0.members.get(0) instanceof LocationArray)) {	
 				LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
 				AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
 				e.members.set(0, new Expr(parent, parent.line, t0));
 				toProcess.add(a0);
 				toAdd.add(a0);
 			}
-			else dfsExtractMethodCalls(child0, toAdd, toProcess, blockpar, parent);
+			else dfsExtractMethodCallsAndArray(child0, toAdd, toProcess, blockpar, parent);
 			Expr child2 = (Expr)e.members.get(2);
-			if(child2.members.size()==1 && (child2.members.get(0) instanceof MethodCall)) {
+			if(child2.members.size()==1 && (child2.members.get(0) instanceof MethodCall) || (child2.members.get(0) instanceof LocationArray)) {
 				LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
 				AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
 				e.members.set(2, new Expr(parent, parent.line, t2));
 				toProcess.add(a2);
 				toAdd.add(a2);
 			}
-			else dfsExtractMethodCalls(child2, toAdd, toProcess, blockpar, parent);
+			else dfsExtractMethodCallsAndArray(child2, toAdd, toProcess, blockpar, parent);
 		}
 		else if(e.members.size() == 2) {
 			Expr child1 = (Expr)e.members.get(1);
-			if(child1.members.size()==1 && (child1.members.get(0) instanceof MethodCall)) {
+			if(child1.members.size()==1 && (child1.members.get(0) instanceof MethodCall) || (child1.members.get(0) instanceof LocationArray)) {
 				LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
 				AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
 				e.members.set(0, new Expr(parent, parent.line, t1));
 				toProcess.add(a1);
 				toAdd.add(a1);
 			}
-			else dfsExtractMethodCalls(child1, toAdd, toProcess, blockpar, parent);
+			else dfsExtractMethodCallsAndArray(child1, toAdd, toProcess, blockpar, parent);
 		}
 		else if(e.members.size() == 1) {
 			
@@ -1066,7 +1066,7 @@ public class IR {
 				Statement statement = toProcess.poll();
 				if(statement instanceof MethodCall) {
 					MethodCall MC = (MethodCall)statement;
-					for(int j=0; j<MC.params.size(); j++) {
+					for(int j=MC.params.size()-1; j>=0; j--) {
 						MethodParam param = MC.params.get(j);
 						if(param.val instanceof Expr) {
 							Expr e = (Expr)param.val;
@@ -1098,7 +1098,7 @@ public class IR {
 					if(expr.members.size()==1 && !isBasicExpr(expr)) { 
 						if(expr.members.get(0) instanceof MethodCall) {
 							MethodCall MC = (MethodCall)expr.members.get(0);
-							for(int j=0; j<MC.params.size(); j++) {
+							for(int j=MC.params.size()-1; j>=0; j--) {
 								MethodParam param = MC.params.get(j);
 								if(param.val instanceof Expr) {
 									Expr e = (Expr)param.val;
@@ -1125,7 +1125,7 @@ public class IR {
 					else {
 						List<Statement> toAddTmp = new ArrayList<>();
 						List<Statement> toProcessTmp = new ArrayList<>();
-						dfsExtractMethodCalls(expr, toAddTmp, toProcessTmp, blockpar, parent);
+						dfsExtractMethodCallsAndArray(expr, toAddTmp, toProcessTmp, blockpar, parent);
 						Collections.reverse(toAddTmp);
 						Collections.reverse(toProcessTmp);
 						for(Statement j: toAddTmp)
@@ -1148,7 +1148,7 @@ public class IR {
 	//returns true if expr can be directly computed in assembly ((Atomic op Atomic) or (op Atomic) or (Atomic) or (LocationArray[Atomic]) or (MethodCall(atomics...)))
 	private boolean isBasicExpr(Expr expr) {
 		if(	   isAtomicExpr(expr) || 
-			  (expr.members.size()==1 && (expr.members.get(0) instanceof LocationArray && isAtomicExpr(((LocationArray)expr.members.get(0)).index))) ||
+			  (expr.members.size()==1 && ((expr.members.get(0) instanceof LocationArray) && isAtomicExpr(((LocationArray)expr.members.get(0)).index))) ||
 			  (expr.members.size()==2 && isAtomicExpr((Expr)expr.members.get(1))) ||
 			  (expr.members.size()==3 && isAtomicExpr((Expr)expr.members.get(0)) && isAtomicExpr((Expr)expr.members.get(2))))
 			return true;
