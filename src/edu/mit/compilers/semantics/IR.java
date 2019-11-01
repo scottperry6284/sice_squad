@@ -1314,6 +1314,17 @@ public class IR {
 		List<Block> blocks = new ArrayList<>();
 		while(irTraverser.hasNext()) {
 			IR.Node _node = irTraverser.getNext();
+			if (_node instanceof Expr){
+				Expr nodeExpr = (Expr) _node;
+				for (int i = 0; i < nodeExpr.getChildren().size(); i++){
+					Node child = nodeExpr.getChildren().get(i);
+					if (child instanceof Len){
+						Len nodeLen = (Len) child;
+						FieldDeclArray nodeFieldDeclArray = (FieldDeclArray) nodeLen.symbolTable.find(nodeLen.ID);
+						nodeExpr.members.set(i, new IntLiteral(nodeExpr, nodeExpr.line, nodeFieldDeclArray.length));
+					}
+				}
+			}
 			if(_node instanceof Block)
 				blocks.add((Block)_node);
 		}
