@@ -169,6 +169,7 @@ public class Codegen {
 		//push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
 		
 		if(call.params.size() > 6) {
+			asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rax")); //does this help? doesn't seem so
 			long additionalOffset = 2 * ControlFlow.wordSize;
 			if(call.params.size()%2 == 1) {
 				asmOutput.add(new Asm(Asm.Op.pushq, "$0")); //dummy
@@ -252,9 +253,11 @@ public class Codegen {
 		}
 		else if(CFS instanceof CFEndMethod) {
 			CFEndMethod CFEM = (CFEndMethod)CFS;
-			if(CFEM.end == MethodEnd.main)
+			if(CFEM.end == MethodEnd.main) {
 				asmOutput.add(new Asm(Asm.Op.mov, "$0", "%rax"));
-			if(CFEM.end == MethodEnd.nothing) {
+				asmOutput.add(new Asm(Asm.Op.ret));
+			}
+			else if(CFEM.end == MethodEnd.nothing) { //void
 				//restore the stack
 				CFPushScope CFPS = CFS.scope;
 				while(CFPS != null) {
