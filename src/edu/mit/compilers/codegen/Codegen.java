@@ -92,7 +92,7 @@ public class Codegen {
 		boolean importMethod = CF.importMethods.containsKey(call.ID);
 		if(!importMethod) {
 			if(call.params.size() > 0) {
-				long stackPos = -(call.params.size()+1) * ControlFlow.wordSize;
+				long stackPos = -(call.params.size()+2) * ControlFlow.wordSize;
 				for(IR.MethodParam i: call.params) {
 					IR.Node child0 = ((IR.Expr)i.val).members.get(0);
 					if(child0 instanceof IR.LocationNoArray) {
@@ -111,11 +111,6 @@ public class Codegen {
 		
 		
 		String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
-		
-		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
-		asmOutput.add(new Asm(Asm.Op.pushq, "(%rsp)"));
-		asmOutput.add(new Asm(Asm.Op.shr, "$4", "%rsp"));
-		asmOutput.add(new Asm(Asm.Op.shl, "$4", "%rsp"));
 
 		//TODO: push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
 		for (int i = 0; i < call.params.size(); i++) {
@@ -168,11 +163,15 @@ public class Codegen {
 			}
 
 		}
+		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.pushq, "(%rsp)"));
+		asmOutput.add(new Asm(Asm.Op.shr, "$4", "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.shl, "$4", "%rsp"));
 		
 		// Make method call.
 		asmOutput.add(new Asm(Asm.Op.call, call.ID));
 		
-		asmOutput.add(new Asm(Asm.Op.addq, "$8", "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.addq, "$8", "%rsp")); //jack said add, but I'm using addq
 		asmOutput.add(new Asm(Asm.Op.movq, "(%rsp)", "%rsp"));
 	}
 
