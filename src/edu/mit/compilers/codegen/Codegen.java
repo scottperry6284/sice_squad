@@ -11,6 +11,7 @@ import edu.mit.compilers.codegen.ControlFlow.CFAssignment;
 import edu.mit.compilers.codegen.ControlFlow.CFBranch;
 import edu.mit.compilers.codegen.ControlFlow.CFEndMethod;
 import edu.mit.compilers.codegen.ControlFlow.CFMergeBranch;
+import edu.mit.compilers.codegen.ControlFlow.CFMethod;
 import edu.mit.compilers.codegen.ControlFlow.CFMethodCall;
 import edu.mit.compilers.codegen.ControlFlow.CFNop;
 import edu.mit.compilers.codegen.ControlFlow.CFPushScope;
@@ -91,7 +92,7 @@ public class Codegen {
 		boolean importMethod = CF.importMethods.containsKey(call.ID);
 		if(!importMethod) {
 			if(call.params.size() > 0) {
-				long stackPos = -(call.params.size() + 1) * ControlFlow.wordSize;
+				long stackPos = -(call.params.size()+1) * ControlFlow.wordSize;
 				for(IR.MethodParam i: call.params) {
 					IR.Node child0 = ((IR.Expr)i.val).members.get(0);
 					if(child0 instanceof IR.LocationNoArray) {
@@ -99,7 +100,7 @@ public class Codegen {
 						asmOutput.add(new Asm(Asm.Op.movq, "%rdi", stackPos + "(%rsp)"));
 					}
 					else if(child0 instanceof IR.Literal)
-						asmOutput.add(new Asm(Asm.Op.movq, "$" + ((IR.Literal)child0).val(), "%rdi"));
+						asmOutput.add(new Asm(Asm.Op.movq, "$" + ((IR.Literal)child0).val(), stackPos + "(%rsp)"));
 					else throw new IllegalArgumentException("Bad child0 type: " + child0.getClass().getSimpleName());
 					stackPos += ControlFlow.wordSize;
 				}
@@ -213,7 +214,7 @@ public class Codegen {
 		System.out.println(CFS.getClass().getSimpleName());*/
 		
 		asmOutput.add(new Asm(Asm.Op.label, getLabel(CFS)));
-		if(CFS instanceof CFPushScope) { //or Method
+		if(CFS instanceof CFPushScope) {
 			CFPushScope CFPS = (CFPushScope)CFS;
 			if(CFPS.stackOffset > 0) {
 				asmOutput.add(new Asm(Asm.Op.pushq, "%rbp"));
@@ -224,9 +225,9 @@ public class Codegen {
 		else if(CFS instanceof CFEndMethod) {
 			CFEndMethod CFEM = (CFEndMethod)CFS;
 			if(CFS.scope.stackOffset > 0) {
+				asmOutput.add(new Asm(Asm.Op.addq, "$" + CFS.scope.stackOffset, "%rsp"));
 				asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
 				asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
-				asmOutput.add(new Asm(Asm.Op.addq, "$" + CFS.scope.stackOffset, "%rsp"));
 			}
 			if(CFEM.end == MethodEnd.main)
 				asmOutput.add(new Asm(Asm.Op.mov, "$0", "%rax"));
