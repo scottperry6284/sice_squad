@@ -200,7 +200,7 @@ public class Codegen {
 				else return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
 			}
 			if(scope.stackOffset != 0)
-				stackOffset += scope.stackOffset + ControlFlow.wordSize; //+wordSize because we push rbp if stackOffset!=0
+				stackOffset += scope.stackOffset + ControlFlow.wordSize; //+wordSize because we push rbp and a filler 8 if stackOffset!=0
 			scope = scope.parent;
 		}
 		//it's in the global scope
@@ -208,30 +208,37 @@ public class Codegen {
 			throw new IllegalStateException("Variable with name \"" + name + "\" not found in any scope");
 		return CF.program.variables.get(name).stackOffset + " + globalvar";
 	}
+	private void pushScope(long size) {
+		asmOutput.add(new Asm(Asm.Op.pushq, "%rbp"));
+		asmOutput.add(new Asm(Asm.Op.movq, "%rsp", "%rbp"));
+		if(ControlFlow.wordSize == 16)
+			asmOutput.add(new Asm(Asm.Op.subq, "$" + (size + 8), "%rsp"));
+		else asmOutput.add(new Asm(Asm.Op.subq, "$" + size, "%rsp"));
+	}
+	private void popScope(long size) {
+		if(ControlFlow.wordSize == 16)
+			asmOutput.add(new Asm(Asm.Op.addq, "$" + (size + 8), "%rsp"));
+		else asmOutput.add(new Asm(Asm.Op.addq, "$" + size, "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
+	}
 	private void processCFS(CFStatement CFS) {
-		for(int i=0; i<CFS.scope.depth; i++)
+		/*for(int i=0; i<CFS.scope.depth; i++)
 			System.out.print("  ");
-		System.out.println(CFS.getClass().getSimpleName());
+		System.out.println(CFS.getClass().getSimpleName());*/
 		
 		asmOutput.add(new Asm(Asm.Op.label, getLabel(CFS)));
 		if(CFS instanceof CFPushScope) {
 			CFPushScope CFPS = (CFPushScope)CFS;
-			if(CFPS.stackOffset > 0) {
-				asmOutput.add(new Asm(Asm.Op.pushq, "%rbp"));
-				asmOutput.add(new Asm(Asm.Op.movq, "%rsp", "%rbp"));
-				asmOutput.add(new Asm(Asm.Op.subq, "$" + CFPS.stackOffset, "%rsp"));
-			}
+			if(CFPS.stackOffset > 0)
+				pushScope(CFPS.stackOffset);
 		}
 		else if(CFS instanceof CFEndMethod) {
-			/*CFEndMethod CFEM = (CFEndMethod)CFS;
-			if(CFS.scope.stackOffset > 0) {
-				asmOutput.add(new Asm(Asm.Op.addq, "$" + CFS.scope.stackOffset, "%rsp"));
-				asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
-				asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
-			}
-			if(CFEM.end == MethodEnd.main)
+			CFEndMethod CFEM = (CFEndMethod)CFS;
+			if(CFEM.end == MethodEnd.main) {
 				asmOutput.add(new Asm(Asm.Op.mov, "$0", "%rax"));
-			asmOutput.add(new Asm(Asm.Op.ret));*/
+				asmOutput.add(new Asm(Asm.Op.ret));
+			}
 			return;
 		}
 		else if(CFS instanceof CFContainer) {
@@ -267,11 +274,8 @@ public class Codegen {
 			//restore the stack
 			CFPushScope CFPS = CFS.scope;
 			while(CFPS != null) {
-				if(CFPS.stackOffset > 0) {
-					asmOutput.add(new Asm(Asm.Op.addq, "$" + CFPS.stackOffset, "%rsp"));
-					asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
-					asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
-				}
+				if(CFPS.stackOffset > 0)
+					popScope(CFPS.stackOffset);
 				CFPS = CFPS.parent;
 			}
 			
@@ -306,11 +310,8 @@ public class Codegen {
 			if(CFS.scope.depth > CFS.next.scope.depth) {
 				CFPushScope CFPS = CFS.scope;
 				while(CFPS!=null && CFPS!=CFS.next.scope) {
-					if(CFPS.stackOffset > 0) {
-						asmOutput.add(new Asm(Asm.Op.addq, "$" + CFPS.stackOffset, "%rsp"));
-						asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
-						asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
-					}
+					if(CFPS.stackOffset > 0)
+						popScope(CFPS.stackOffset);
 					CFPS = CFPS.parent;
 				}
 			}
