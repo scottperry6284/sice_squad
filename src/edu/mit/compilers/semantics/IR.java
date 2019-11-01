@@ -3,6 +3,7 @@ package edu.mit.compilers.semantics;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1007,26 +1008,62 @@ public class IR {
 	private Map<Expr, LocationNoArray> tempExpr;
 	public LocationNoArray exprToTempVar(Block block, IRType type, Expr expr) {
 		if(!tempExpr.containsKey(expr)) {
-			LocationNoArray loc = new LocationNoArray(block, block.line, "@temp" + tempExpr.size());
-			block.fields.add(new FieldDeclNoArray(block, block.line, loc, type));
+			String name = "@temp" + tempExpr.size();
+			LocationNoArray loc = new LocationNoArray(block, block.line, name);
+			FieldDeclNoArray field_decl = new FieldDeclNoArray(block, block.line, loc, type);
+			block.fields.add(field_decl);
+			loc.symbolTable = new SymbolTable();
+			loc.symbolTable.add(name, field_decl);
 			tempExpr.put(expr, loc);
 		}
 		return tempExpr.get(expr);
 	}
+	private void dfsExtractMethodCalls(Expr e, List<Statement> toAdd, List<Statement> toProcess, Block blockpar, IR.Node parent) {
+		if(e.members.size() == 3) {
+			Expr child0 = (Expr)e.members.get(0);
+			if(child0.members.size()==1 && (child0.members.get(0) instanceof MethodCall)) {	
+				LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
+				AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
+				e.members.set(0, new Expr(parent, parent.line, t0));
+				toProcess.add(a0);
+				toAdd.add(a0);
+			}
+			else dfsExtractMethodCalls(child0, toAdd, toProcess, blockpar, parent);
+			Expr child2 = (Expr)e.members.get(2);
+			if(child2.members.size()==1 && (child2.members.get(0) instanceof MethodCall)) {
+				LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
+				AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
+				e.members.set(2, new Expr(parent, parent.line, t2));
+				toProcess.add(a2);
+				toAdd.add(a2);
+			}
+			else dfsExtractMethodCalls(child2, toAdd, toProcess, blockpar, parent);
+		}
+		else if(e.members.size() == 2) {
+			Expr child1 = (Expr)e.members.get(1);
+			if(child1.members.size()==1 && (child1.members.get(0) instanceof MethodCall)) {
+				LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
+				AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
+				e.members.set(0, new Expr(parent, parent.line, t1));
+				toProcess.add(a1);
+				toAdd.add(a1);
+			}
+			else dfsExtractMethodCalls(child1, toAdd, toProcess, blockpar, parent);
+		}
+		else if(e.members.size() == 1) {
+			
+		}
+		else throw new IllegalStateException("Expr has bad size, size = " + e.members.size());
+	}
 	private void separateCallsAndExprAndArray(Block blockpar, IR.Node parent, List<Statement> statements) {
 		for(int i=0; i<statements.size(); i++) {
 			Statement st = statements.get(i);
-			List<Statement> toAdd = new ArrayList<>();
-			Queue<Statement> toProcess = new ArrayDeque<>();
-			Statement orig = null;
-			if((st instanceof AssignmentStatement) || (st instanceof MethodCall)) {
-				orig = st;
-				toProcess.add(st);
-			}
+			Deque<Statement> toAdd = new ArrayDeque<>();
+			Deque<Statement> toProcess = new ArrayDeque<>();
+			if((st instanceof AssignmentStatement) || (st instanceof MethodCall))
+				toProcess.addFirst(st);
 			while(!toProcess.isEmpty()) {
 				Statement statement = toProcess.poll();
-				if(statement != orig)
-					toAdd.add(statement);
 				if(statement instanceof MethodCall) {
 					MethodCall MC = (MethodCall)statement;
 					for(int j=0; j<MC.params.size(); j++) {
@@ -1037,7 +1074,8 @@ public class IR {
 								LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
 								AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
 								param.val = new Expr(parent, parent.line, t);
-								toProcess.add(a0);
+								toProcess.addFirst(a0);
+								toAdd.addFirst(a0);
 							}
 						}
 					}
@@ -1050,7 +1088,8 @@ public class IR {
 							LocationNoArray t = exprToTempVar(blockpar, LA.index.getT(), LA.index);
 							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, LA.index);
 							LA.index = new Expr(parent, parent.line, t);
-							toProcess.add(a0);
+							toProcess.addFirst(a0);
+							toAdd.addFirst(a0);
 						}
 					}
 					Expr expr = AS.assignExpr;
@@ -1067,7 +1106,8 @@ public class IR {
 										LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
 										AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
 										param.val = new Expr(parent, parent.line, t);
-										toProcess.add(a0);
+										toProcess.addFirst(a0);
+										toAdd.addFirst(a0);
 									}
 								}
 							}
@@ -1078,51 +1118,23 @@ public class IR {
 							LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
 							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
 							LA.index = new Expr(parent, parent.line, t);
-							toProcess.add(a0);
+							toProcess.addFirst(a0);
+							toAdd.addFirst(a0);
 						}
 					}
 					else {
-						Queue<Expr> q = new ArrayDeque<>();
-						q.add(expr);
-						while(!q.isEmpty()) {
-							Expr e = q.poll();
-							if(e.members.size() == 3) {
-								Expr child0 = (Expr)e.members.get(0);
-								if(child0.members.size()==1 && (child0.members.get(0) instanceof MethodCall)) {	
-									LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
-									AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
-									e.members.set(0, new Expr(parent, parent.line, t0));
-									toProcess.add(a0);
-								}
-								else q.add(child0);
-								Expr child2 = (Expr)e.members.get(2);
-								if(child2.members.size()==1 && (child2.members.get(0) instanceof MethodCall)) {
-									LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
-									AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
-									e.members.set(2, new Expr(parent, parent.line, t2));
-									toProcess.add(a2);
-								}
-								else q.add(child2);
-							}
-							else if(e.members.size() == 2) {
-								Expr child1 = (Expr)e.members.get(1);
-								if(child1.members.size()==1 && (child1.members.get(0) instanceof MethodCall)) {
-									LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
-									AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
-									e.members.set(0, new Expr(parent, parent.line, t1));
-									toProcess.add(a1);
-								}
-								else q.add(child1);
-							}
-							else if(e.members.size() == 1) {
-								
-							}
-							else throw new IllegalStateException("Expr has bad size, size = " + e.members.size());
-						}
+						List<Statement> toAddTmp = new ArrayList<>();
+						List<Statement> toProcessTmp = new ArrayList<>();
+						dfsExtractMethodCalls(expr, toAddTmp, toProcessTmp, blockpar, parent);
+						Collections.reverse(toAddTmp);
+						Collections.reverse(toProcessTmp);
+						for(Statement j: toAddTmp)
+							toAdd.addFirst(j);
+						for(Statement j: toProcessTmp)
+							toProcess.addFirst(j);
 					}
 				}
 			}
-			Collections.reverse(toAdd);
 			statements.addAll(i, toAdd);
 			i += toAdd.size();
 		}
@@ -1149,6 +1161,9 @@ public class IR {
 		}
 		return false;
 	}
+	private void dfsFragmentExpr(Expr e, List<Statement> toAdd, List<AssignmentStatement> toProcess, Block blockpar, IR.Node parent) {
+		
+	}
 	private void fragmentExpr(Block blockpar, IR.Node parent, List<Statement> statements) {
 		for(int i=0; i<statements.size(); i++) {
 			Statement st = statements.get(i);
@@ -1174,19 +1189,19 @@ public class IR {
 						}
 					}
 					else if(e.members.size() == 3) {
-						Expr child0 = (Expr)e.members.get(0);
-						if(!isAtomicExpr(child0)) {
-							LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
-							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
-							e.members.set(0, new Expr(parent, parent.line, t0));
-							toProcess.add(a0);
-						}
 						Expr child2 = (Expr)e.members.get(2);
 						if(!isAtomicExpr(child2)) {
 							LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
 							AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
 							e.members.set(2, new Expr(parent, parent.line, t2));
 							toProcess.add(a2);
+						}
+						Expr child0 = (Expr)e.members.get(0);
+						if(!isAtomicExpr(child0)) {
+							LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
+							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
+							e.members.set(0, new Expr(parent, parent.line, t0));
+							toProcess.add(a0);
 						}
 					}
 					else if(e.members.size() == 2) {
