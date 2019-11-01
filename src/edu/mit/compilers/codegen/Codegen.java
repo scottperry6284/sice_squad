@@ -11,7 +11,6 @@ import edu.mit.compilers.codegen.ControlFlow.CFAssignment;
 import edu.mit.compilers.codegen.ControlFlow.CFBranch;
 import edu.mit.compilers.codegen.ControlFlow.CFEndMethod;
 import edu.mit.compilers.codegen.ControlFlow.CFMergeBranch;
-import edu.mit.compilers.codegen.ControlFlow.CFMethod;
 import edu.mit.compilers.codegen.ControlFlow.CFMethodCall;
 import edu.mit.compilers.codegen.ControlFlow.CFNop;
 import edu.mit.compilers.codegen.ControlFlow.CFPushScope;
@@ -88,6 +87,55 @@ public class Codegen {
 		}
 		return addedStrings.get(s);
 	}
+	private void processImportCallParam(IR.MethodCall call, CFPushScope scope, int i) {
+		final String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+		
+		Object param = call.params.get(i).val;
+
+		// Put all of the strings in a separate list.
+		if (param instanceof String) {
+
+			String paramCast = (String) param;
+	
+			String strLabel = getAddedStringLabel(paramCast);
+
+			if (i<=5) {
+				asmOutput.add(new Asm(Asm.Op.leaq, strLabel, CCallRegs[i]));
+
+			} else {
+				// If more than 6 args put into r10 and then push to stack.
+				asmOutput.add(new Asm(Asm.Op.leaq, paramCast, "%r10"));
+				asmOutput.add(new Asm(Asm.Op.pushq, "%r10"));
+			}
+
+		} else {
+			IR.Node paramCast = ((Expr) param).members.get(0);
+	
+			if (paramCast instanceof IR.LocationNoArray) {
+
+				IR.LocationNoArray paramCastLocationNoArray = (IR.LocationNoArray) paramCast;
+				
+				String varVal = getVarLoc(paramCastLocationNoArray, scope);
+
+				if (i<=5) {
+					asmOutput.add(new Asm(Asm.Op.movq, varVal, CCallRegs[i]));
+				} else {
+					asmOutput.add(new Asm(Asm.Op.pushq, varVal));
+				}
+	
+			}
+			else if (paramCast instanceof IR.Literal) {
+				IR.Literal paramCastInt = (IR.Literal) paramCast;
+
+				if (i<=5) {
+					asmOutput.add(new Asm(Asm.Op.movq, "$" + paramCastInt.val(), CCallRegs[i]));
+				} else {
+					asmOutput.add(new Asm(Asm.Op.pushq, "$" + paramCastInt.val()));
+				}
+			}
+			else throw new IllegalStateException("Bad IR.Node type: " + paramCast.getClass().getSimpleName());
+		}
+	}
 	private void executeMethod(IR.MethodCall call, CFPushScope scope) {
 		boolean importMethod = CF.importMethods.containsKey(call.ID);
 		if(!importMethod) {
@@ -109,70 +157,33 @@ public class Codegen {
 			return;
 		}
 		
-		
-		String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
-
-		//TODO: push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
-		for (int i = 0; i < call.params.size(); i++) {
-
-			Object param = call.params.get(i).val;
-
-			// Put all of the strings in a seperate list.
-			if (param instanceof String) {
-
-				String paramCast = (String) param;
-		
-				String strLabel = getAddedStringLabel(paramCast);
-
-				if (importMethod && (i<=5)){
-					
-					asmOutput.add(new Asm(Asm.Op.leaq, strLabel, CCallRegs[i]));
-
-				} else {
-					// If more than 6 args put into r10 and then push to stack.
-					asmOutput.add(new Asm(Asm.Op.leaq, paramCast, "%r10"));
-					asmOutput.add(new Asm(Asm.Op.pushq, "%r10"));
-				}
-
-			} else {
-				IR.Node paramCast = ((Expr) param).members.get(0);
-		
-				if (paramCast instanceof IR.LocationNoArray) {
-
-					IR.LocationNoArray paramCastLocationNoArray = (IR.LocationNoArray) paramCast;
-					
-					String varVal = getVarLoc(paramCastLocationNoArray, scope);
-
-					if (importMethod && (i<=5)) {
-						asmOutput.add(new Asm(Asm.Op.movq, varVal, CCallRegs[i]));
-					} else {
-						asmOutput.add(new Asm(Asm.Op.pushq, varVal));
-					}
-		
-				}
-				else if (paramCast instanceof IR.Literal) {
-					IR.Literal paramCastInt = (IR.Literal) paramCast;
-
-					if (importMethod && (i<=5)) {
-						asmOutput.add(new Asm(Asm.Op.movq, "$" + paramCastInt.val(), CCallRegs[i]));
-					} else {
-						asmOutput.add(new Asm(Asm.Op.pushq, "$" + paramCastInt.val()));
-					}
-				}
-				else throw new IllegalStateException("Bad IR.Node type: " + paramCast.getClass().getSimpleName());
-			}
-
-		}
 		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
 		asmOutput.add(new Asm(Asm.Op.pushq, "(%rsp)"));
 		asmOutput.add(new Asm(Asm.Op.shr, "$4", "%rsp"));
 		asmOutput.add(new Asm(Asm.Op.shl, "$4", "%rsp"));
 		
+		//push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
+		for (int i = 0; i < Math.min(6, call.params.size()); i++) {
+			processImportCallParam(call, scope, i);
+		}
+		
+		if(call.params.size() > 6) {
+			if(call.params.size()%2 == 1)
+				asmOutput.add(new Asm(Asm.Op.pushq, "$0")); //dummy
+			for(int i=call.params.size()-1; i>6; i--)
+				processImportCallParam(call, scope, i);
+		}
+		
 		// Make method call.
 		asmOutput.add(new Asm(Asm.Op.call, call.ID));
 		
+		if(call.params.size() > 6) {
+			asmOutput.add(new Asm(Asm.Op.addq, "$" + (((call.params.size()-6+1)/2)*2*ControlFlow.wordSize), "%rsp"));
+		}
+		
 		asmOutput.add(new Asm(Asm.Op.addq, "$8", "%rsp")); //jack said add, but I'm using addq
 		asmOutput.add(new Asm(Asm.Op.movq, "(%rsp)", "%rsp"));
+		
 	}
 	private int vLocCount = 0;
 	private String getVarLoc(IR.Location loc, CFPushScope scope) {
@@ -234,8 +245,16 @@ public class Codegen {
 		}
 		else if(CFS instanceof CFEndMethod) {
 			CFEndMethod CFEM = (CFEndMethod)CFS;
-			if(CFEM.end == MethodEnd.main) {
+			if(CFEM.end == MethodEnd.main)
 				asmOutput.add(new Asm(Asm.Op.mov, "$0", "%rax"));
+			if(CFEM.end == MethodEnd.nothing) {
+				//restore the stack
+				CFPushScope CFPS = CFS.scope;
+				while(CFPS != null) {
+					if(CFPS.stackOffset > 0)
+						popScope(CFPS.stackOffset);
+					CFPS = CFPS.parent;
+				}
 				asmOutput.add(new Asm(Asm.Op.ret));
 			}
 			return;
