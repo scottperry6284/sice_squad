@@ -109,6 +109,7 @@ public class Codegen {
 			return;
 		}
 		
+		
 		String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
 		
 		//TODO: push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
@@ -148,41 +149,17 @@ public class Codegen {
 						asmOutput.add(new Asm(Asm.Op.pushq, varVal));
 					}
 		
-				} else if (paramCast instanceof IR.BoolLiteral) {
-
-					IR.BoolLiteral paramCastBool = (IR.BoolLiteral) paramCast;
-					if (paramCastBool.value) {
-						if (importMethod && (i<=5)) {
-							asmOutput.add(new Asm(Asm.Op.movq, "$1", CCallRegs[i]));
-						} else {
-							asmOutput.add(new Asm(Asm.Op.pushq, "$1"));
-						}
-					} else {
-						if (importMethod && (i<=5)) {
-							asmOutput.add(new Asm(Asm.Op.movq, "$0", CCallRegs[i]));
-						} else {
-							asmOutput.add(new Asm(Asm.Op.pushq, "$0"));
-						}	
-					}
-
-				} else if (paramCast instanceof IR.IntLiteral) {
-					IR.IntLiteral paramCastInt = (IR.IntLiteral) paramCast;
+				}
+				else if (paramCast instanceof IR.Literal) {
+					IR.Literal paramCastInt = (IR.Literal) paramCast;
 
 					if (importMethod && (i<=5)) {
-						asmOutput.add(new Asm(Asm.Op.movq, "$" + paramCastInt.getText(), CCallRegs[i]));
+						asmOutput.add(new Asm(Asm.Op.movq, "$" + paramCastInt.val(), CCallRegs[i]));
 					} else {
-						asmOutput.add(new Asm(Asm.Op.pushq, "$" + paramCastInt.getText()));
+						asmOutput.add(new Asm(Asm.Op.pushq, "$" + paramCastInt.val()));
 					}
-
-				} else if (paramCast instanceof IR.CharLiteral) {
-					IR.CharLiteral paramCastChar = (IR.CharLiteral) paramCast;
-
-					if (importMethod && (i<=5)) {
-						asmOutput.add(new Asm(Asm.Op.movq, "$" + (long) paramCastChar.value, CCallRegs[i]));
-					} else {
-						asmOutput.add(new Asm(Asm.Op.pushq, "$" + (long) paramCastChar.value));
-					}
-				} 
+				}
+				else throw new IllegalStateException("Bad IR.Node type: " + paramCast.getClass().getSimpleName());
 			}
 
 		}
@@ -360,6 +337,7 @@ public class Codegen {
 		//don't add CF.program to scopes because it"s a special global scope
 		if(CF.program.stackOffset > 0) {
 			asmOutput.add(new Asm(Asm.Op.custom, ".comm globalvar, " + CF.program.stackOffset + ", 16"));
+			asmOutput.add(new Asm(Asm.Op.custom, ".comm import_align, 16 , 16"));
 			asmOutput.add(new Asm(Asm.Op.newline));
 		}
 		for(Map.Entry<String, ControlFlow.MethodSym> method: CF.methods.entrySet())
