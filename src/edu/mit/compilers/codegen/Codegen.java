@@ -174,15 +174,27 @@ public class Codegen {
 		asmOutput.add(new Asm(Asm.Op.addq, "$8", "%rsp")); //jack said add, but I'm using addq
 		asmOutput.add(new Asm(Asm.Op.movq, "(%rsp)", "%rsp"));
 	}
-
+	private int vLocCount = 0;
 	private String getVarLoc(IR.Location loc, CFPushScope scope) {
+		vLocCount++;
 		String name = loc.ID;
 		long stackOffset = 0;
+		String reg = null;
+		if(loc instanceof IR.LocationArray) {
+			IR.Node idx = ((IR.LocationArray)(loc)).index.members.get(0);
+			if(idx instanceof IR.Literal)
+				stackOffset += ((IR.Literal)idx).val() * ControlFlow.wordSize;
+			else {
+				reg = vLocCount%2==0? "%rbx": "%rcx";
+				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc((IR.Location)idx, scope), reg));
+			}
+		}
+		//for variable indices, do other stuff
 		while(scope != null) {
 			if(scope.variables.containsKey(name)) {
-				if(loc instanceof IR.LocationArray)
+				if(reg == null)
 					return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
-				else return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
+				else return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp, " + reg + ", " + ControlFlow.wordSize + ")";
 			}
 			if(scope.stackOffset != 0)
 				stackOffset += scope.stackOffset + ControlFlow.wordSize; //+wordSize because we push rbp and a filler 8 if stackOffset!=0
@@ -191,7 +203,13 @@ public class Codegen {
 		//it's in the global scope
 		if(!CF.program.variables.containsKey(name))
 			throw new IllegalStateException("Variable with name \"" + name + "\" not found in any scope");
-		return CF.program.variables.get(name).stackOffset + " + globalvar";
+		if(reg == null)
+			return CF.program.variables.get(name).stackOffset + " + globalvar";
+		else {
+			asmOutput.add(new Asm(Asm.Op.imul, "$" + ControlFlow.wordSize, reg));
+			asmOutput.add(new Asm(Asm.Op.addq, "$" + CF.program.variables.get(name).stackOffset, reg));
+			return "globalvar(" + reg + ")";
+		}
 	}
 	private void pushScope(long size) {
 		asmOutput.add(new Asm(Asm.Op.pushq, "%rbp"));
@@ -340,7 +358,7 @@ public class Codegen {
 		labels = new HashMap<>();
 		//don't add CF.program to scopes because it"s a special global scope
 		if(CF.program.stackOffset > 0) {
-			asmOutput.add(new Asm(Asm.Op.custom, ".comm globalvar, " + CF.program.stackOffset + ", 16"));
+			asmOutput.add(new Asm(Asm.Op.custom, ".comm globalvar, " + CF.program.stackOffset + ", 8"));
 			asmOutput.add(new Asm(Asm.Op.custom, ".comm import_align, 16 , 16"));
 			asmOutput.add(new Asm(Asm.Op.newline));
 		}
@@ -469,7 +487,7 @@ public class Codegen {
 			}
 		}
 		else if (expr.members.size() == 1){
-			if (child1 instanceof IR.LocationArray){
+			/*if (child1 instanceof IR.LocationArray){
 				IR.LocationArray c2 = (IR.LocationArray) child1;
 				IR.Node cm = c2.index.members.get(0);
 				if (cm instanceof IR.LocationNoArray){
@@ -488,6 +506,10 @@ public class Codegen {
 			}
 			else if (child1 instanceof IR.LocationNoArray){
 				IR.LocationNoArray c2 = (IR.LocationNoArray) child1; 
+				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi"));
+			}*/
+			if (child1 instanceof IR.Location){
+				IR.Location c2 = (IR.Location) child1; 
 				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi"));
 			}
 			else if (child1 instanceof IR.BoolLiteral){
@@ -520,8 +542,8 @@ public class Codegen {
 			IR.Node chil1 = ((IR.Expr)(child1)).members.get(0); 
 			IR.Node child3 = ((IR.Expr)(expr.members.get(2))).members.get(0);
 			
-			if (chil1 instanceof IR.LocationNoArray){
-				IR.LocationNoArray c2 = (IR.LocationNoArray) chil1; 
+			if (chil1 instanceof IR.Location){
+				IR.Location c2 = (IR.Location) chil1; 
 				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi"));
 			}
 			else if (chil1 instanceof IR.BoolLiteral){
@@ -543,9 +565,10 @@ public class Codegen {
 
 				asmOutput.add(new Asm(Asm.Op.movq, "$" + vl, "%rdi")); 
 			}
+			else throw new IllegalStateException("bad assignment child type: " + child1.getClass().getSimpleName());
 			
-			if (child3 instanceof IR.LocationNoArray){
-				IR.LocationNoArray c2 = (IR.LocationNoArray) child3; 
+			if (child3 instanceof IR.Location){
+				IR.Location c2 = (IR.Location) child3; 
 				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rsi"));
 			}
 			else if (child3 instanceof IR.BoolLiteral){
@@ -567,6 +590,8 @@ public class Codegen {
 
 				asmOutput.add(new Asm(Asm.Op.movq, "$" + vl, "%rsi")); 
 			}
+			else throw new IllegalStateException("bad assignment child type: " + child3.getClass().getSimpleName());
+			
 			if (child2 instanceof IR.Op){
 				IR.Op c2 = (IR.Op) child2;
 				IR.Op.Type ctype = c2.type; 
