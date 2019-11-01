@@ -1161,65 +1161,60 @@ public class IR {
 		}
 		return false;
 	}
-	private void dfsFragmentExpr(Expr e, List<Statement> toAdd, List<AssignmentStatement> toProcess, Block blockpar, IR.Node parent) {
-		
+	private void dfsFragmentExpr(AssignmentStatement AS, List<Statement> toAdd, Block blockpar, IR.Node parent) {
+		Expr e = AS.assignExpr;
+		if(e == null) //inc/dec
+			return;
+		if(AS.op.type==Op.Type.plusequals || AS.op.type==Op.Type.minusequals) {
+			if(!isAtomicExpr(e)) {
+				Expr origExpr = new Expr(e); //deep copy
+				LocationNoArray t0 = exprToTempVar(blockpar, e.getT(), origExpr);
+				AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, origExpr);
+				e.members.set(0, t0);
+				dfsFragmentExpr(a0, toAdd, blockpar, parent);
+				toAdd.add(a0);
+			}
+		}
+		else if(e.members.size() == 3) {
+			Expr child0 = (Expr)e.members.get(0);
+			if(!isAtomicExpr(child0)) {
+				LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
+				AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
+				e.members.set(0, new Expr(parent, parent.line, t0));
+				dfsFragmentExpr(a0, toAdd, blockpar, parent);
+				toAdd.add(a0);
+			}
+			Expr child2 = (Expr)e.members.get(2);
+			if(!isAtomicExpr(child2)) {
+				LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
+				AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
+				e.members.set(2, new Expr(parent, parent.line, t2));
+				dfsFragmentExpr(a2, toAdd, blockpar, parent);
+				toAdd.add(a2);
+			}
+		}
+		else if(e.members.size() == 2) {
+			Expr child1 = (Expr)e.members.get(1);
+			if(!isAtomicExpr(child1)) {
+				LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
+				AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
+				e.members.set(1, new Expr(parent, parent.line, t1));
+				toAdd.add(a1);
+				dfsFragmentExpr(a1, toAdd, blockpar, parent);
+			}
+		}
+		else if(e.members.size() == 1) {
+
+		}
+		else throw new IllegalStateException("Expr has bad size, size = " + e.members.size());
 	}
 	private void fragmentExpr(Block blockpar, IR.Node parent, List<Statement> statements) {
 		for(int i=0; i<statements.size(); i++) {
 			Statement st = statements.get(i);
 			List<Statement> toAdd = new ArrayList<>();
 			if(st instanceof AssignmentStatement) {
-				AssignmentStatement origAS = (AssignmentStatement)st;
-				Queue<AssignmentStatement> toProcess = new ArrayDeque<>();
-				toProcess.add(origAS);
-				while(!toProcess.isEmpty()) {
-					AssignmentStatement AS = toProcess.poll();
-					if(AS != origAS)
-						toAdd.add(AS);
-					Expr e = AS.assignExpr;
-					if(e == null) //inc/dec
-						continue;
-					if(AS.op.type==Op.Type.plusequals || AS.op.type==Op.Type.minusequals) {
-						if(!isAtomicExpr(e)) {
-							Expr origExpr = new Expr(e); //deep copy
-							LocationNoArray t0 = exprToTempVar(blockpar, e.getT(), origExpr);
-							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, origExpr);
-							e.members.set(0, t0);
-							toProcess.add(a0);
-						}
-					}
-					else if(e.members.size() == 3) {
-						Expr child2 = (Expr)e.members.get(2);
-						if(!isAtomicExpr(child2)) {
-							LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
-							AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
-							e.members.set(2, new Expr(parent, parent.line, t2));
-							toProcess.add(a2);
-						}
-						Expr child0 = (Expr)e.members.get(0);
-						if(!isAtomicExpr(child0)) {
-							LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
-							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
-							e.members.set(0, new Expr(parent, parent.line, t0));
-							toProcess.add(a0);
-						}
-					}
-					else if(e.members.size() == 2) {
-						Expr child1 = (Expr)e.members.get(1);
-						if(!isAtomicExpr(child1)) {
-							LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
-							AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
-							e.members.set(1, new Expr(parent, parent.line, t1));
-							toProcess.add(a1);
-						}
-					}
-					else if(e.members.size() == 1) {
-
-					}
-					else throw new IllegalStateException("Expr has bad size, size = " + e.members.size());
-				}
+				dfsFragmentExpr((AssignmentStatement)st, toAdd, blockpar, parent);
 			}
-			Collections.reverse(toAdd);
 			statements.addAll(i, toAdd);
 			i += toAdd.size();
 		}
