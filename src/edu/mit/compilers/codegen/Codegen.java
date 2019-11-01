@@ -157,15 +157,16 @@ public class Codegen {
 			return;
 		}
 		
+		for (int i = 0; i < Math.min(6, call.params.size()); i++) {
+			processImportCallParam(call, scope, i);
+		}
+		
 		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
 		asmOutput.add(new Asm(Asm.Op.pushq, "(%rsp)"));
 		asmOutput.add(new Asm(Asm.Op.shr, "$4", "%rsp"));
 		asmOutput.add(new Asm(Asm.Op.shl, "$4", "%rsp"));
 		
 		//push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
-		for (int i = 0; i < Math.min(6, call.params.size()); i++) {
-			processImportCallParam(call, scope, i);
-		}
 		
 		if(call.params.size() > 6) {
 			if(call.params.size()%2 == 1)
