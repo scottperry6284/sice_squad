@@ -111,11 +111,6 @@ public class Codegen {
 		
 		
 		String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
-		
-		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
-		asmOutput.add(new Asm(Asm.Op.pushq, "(%rsp)"));
-		asmOutput.add(new Asm(Asm.Op.shr, "$4", "%rsp"));
-		asmOutput.add(new Asm(Asm.Op.shl, "$4", "%rsp"));
 
 		//TODO: push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
 		for (int i = 0; i < call.params.size(); i++) {
@@ -168,6 +163,10 @@ public class Codegen {
 			}
 
 		}
+		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.pushq, "(%rsp)"));
+		asmOutput.add(new Asm(Asm.Op.shr, "$4", "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.shl, "$4", "%rsp"));
 		
 		// Make method call.
 		asmOutput.add(new Asm(Asm.Op.call, call.ID));
