@@ -32,7 +32,7 @@ public class Codegen {
 		public enum Op { //newline is just whitespace for formatting
 			methodlabel, label, pushq, movq, popq, ret, custom, newline, xor, call,
 			jz, jnz, test, inc, dec, cmp, jmp, not, neg, string, align, imul, idiv, and, or, leaq,
-			sete, setne, setge, setle, setg, setl, jne, mov, addq, subq, andq, orq, movzx;
+			sete, setne, setge, setle, setg, setl, jne, mov, addq, subq, andq, orq, movzx, shr, shl;
 		}
 		public Op op;
 		public String arg1, arg2;
@@ -112,6 +112,11 @@ public class Codegen {
 		
 		String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
 		
+		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.pushq, "(%rsp)"));
+		asmOutput.add(new Asm(Asm.Op.shr, "$4", "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.shl, "$4", "%rsp"));
+
 		//TODO: push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
 		for (int i = 0; i < call.params.size(); i++) {
 
@@ -163,8 +168,12 @@ public class Codegen {
 			}
 
 		}
+		
 		// Make method call.
 		asmOutput.add(new Asm(Asm.Op.call, call.ID));
+		
+		asmOutput.add(new Asm(Asm.Op.addq, "$8", "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.movq, "(%rsp)", "%rsp"));
 	}
 
 	private String getVarLoc(IR.Location loc, CFPushScope scope) {
@@ -188,14 +197,10 @@ public class Codegen {
 	private void pushScope(long size) {
 		asmOutput.add(new Asm(Asm.Op.pushq, "%rbp"));
 		asmOutput.add(new Asm(Asm.Op.movq, "%rsp", "%rbp"));
-		if(ControlFlow.wordSize == 16)
-			asmOutput.add(new Asm(Asm.Op.subq, "$" + (size + 8), "%rsp"));
-		else asmOutput.add(new Asm(Asm.Op.subq, "$" + size, "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.subq, "$" + size, "%rsp"));
 	}
 	private void popScope(long size) {
-		if(ControlFlow.wordSize == 16)
-			asmOutput.add(new Asm(Asm.Op.addq, "$" + (size + 8), "%rsp"));
-		else asmOutput.add(new Asm(Asm.Op.addq, "$" + size, "%rsp"));
+		asmOutput.add(new Asm(Asm.Op.addq, "$" + size, "%rsp"));
 		asmOutput.add(new Asm(Asm.Op.movq, "%rbp", "%rsp"));
 		asmOutput.add(new Asm(Asm.Op.popq, "%rbp"));
 	}
