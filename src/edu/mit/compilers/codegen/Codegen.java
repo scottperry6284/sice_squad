@@ -87,7 +87,7 @@ public class Codegen {
 		}
 		return addedStrings.get(s);
 	}
-	private void processImportCallParam(IR.MethodCall call, CFPushScope scope, int i) {
+	private void processImportCallParam(IR.MethodCall call, CFPushScope scope, int i, long additionalOffset) {
 		final String[] CCallRegs = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
 		
 		Object param = call.params.get(i).val;
@@ -115,7 +115,7 @@ public class Codegen {
 
 				IR.LocationNoArray paramCastLocationNoArray = (IR.LocationNoArray) paramCast;
 				
-				String varVal = getVarLoc(paramCastLocationNoArray, scope);
+				String varVal = getVarLoc(paramCastLocationNoArray, scope, additionalOffset);
 
 				if (i<=5) {
 					asmOutput.add(new Asm(Asm.Op.movq, varVal, CCallRegs[i]));
@@ -158,7 +158,7 @@ public class Codegen {
 		}
 		
 		for (int i = 0; i < Math.min(6, call.params.size()); i++) {
-			processImportCallParam(call, scope, i);
+			processImportCallParam(call, scope, i, 0);
 		}
 		
 		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
@@ -169,10 +169,13 @@ public class Codegen {
 		//push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
 		
 		if(call.params.size() > 6) {
-			if(call.params.size()%2 == 1)
+			long additionalOffset = 2 * ControlFlow.wordSize;
+			if(call.params.size()%2 == 1) {
 				asmOutput.add(new Asm(Asm.Op.pushq, "$0")); //dummy
-			for(int i=call.params.size()-1; i>6; i--)
-				processImportCallParam(call, scope, i);
+				additionalOffset += ControlFlow.wordSize;
+			}
+			for(int i=call.params.size()-1; i>=6; i--, additionalOffset+=ControlFlow.wordSize)
+				processImportCallParam(call, scope, i, additionalOffset);
 		}
 		
 		// Make method call.
@@ -188,14 +191,17 @@ public class Codegen {
 	}
 	private int vLocCount = 0;
 	private String getVarLoc(IR.Location loc, CFPushScope scope) {
+		return getVarLoc(loc, scope, 0);
+	}
+	private String getVarLoc(IR.Location loc, CFPushScope scope, long additionalOffset) {
 		vLocCount++;
 		String name = loc.ID;
-		long stackOffset = 0;
+		long stackOffset = additionalOffset, arrayOffset = 0;
 		String reg = null;
 		if(loc instanceof IR.LocationArray) {
 			IR.Node idx = ((IR.LocationArray)(loc)).index.members.get(0);
 			if(idx instanceof IR.Literal)
-				stackOffset += ((IR.Literal)idx).val() * ControlFlow.wordSize;
+				arrayOffset = ((IR.Literal)idx).val() * ControlFlow.wordSize;
 			else {
 				reg = vLocCount%2==0? "%rbx": "%rcx";
 				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc((IR.Location)idx, scope), reg));
@@ -205,8 +211,8 @@ public class Codegen {
 		while(scope != null) {
 			if(scope.variables.containsKey(name)) {
 				if(reg == null)
-					return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
-				else return (stackOffset + scope.variables.get(name).stackOffset) + "(%rsp, " + reg + ", " + ControlFlow.wordSize + ")";
+					return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
+				else return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(%rsp, " + reg + ", " + ControlFlow.wordSize + ")";
 			}
 			if(scope.stackOffset != 0)
 				stackOffset += scope.stackOffset + ControlFlow.wordSize; //+wordSize because we push rbp and a filler 8 if stackOffset!=0
@@ -216,7 +222,7 @@ public class Codegen {
 		if(!CF.program.variables.containsKey(name))
 			throw new IllegalStateException("Variable with name \"" + name + "\" not found in any scope");
 		if(reg == null)
-			return CF.program.variables.get(name).stackOffset + " + globalvar";
+			return (arrayOffset + CF.program.variables.get(name).stackOffset) + " + globalvar";
 		else {
 			asmOutput.add(new Asm(Asm.Op.imul, "$" + ControlFlow.wordSize, reg));
 			asmOutput.add(new Asm(Asm.Op.addq, "$" + CF.program.variables.get(name).stackOffset, reg));

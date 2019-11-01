@@ -120,10 +120,16 @@ public class ControlFlow {
 					}
 				}
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
-				CFAssignment iteration = new CFForAssignment(pushScope, i.line, FOR.iteration);
+				CFStatement iteration = new CFNop(pushScope, i.line);
+				CFStatement iterStart = iteration;
+				for(IR.Statement statement: FOR.iterationStatements) {
+					IR.AssignmentStatement AS = (IR.AssignmentStatement)statement;
+					iteration.next = new CFAssignment(pushScope, AS.line, AS);
+					iteration = iteration.next;
+				}
 				iteration.next = loopBackTo;
 				CFContainer box = new CFContainer(pushScope, i.line);
-				box.start = shortCircuit(FOR.condition, pushScope, makeBlock(FOR.block, pushScope, iteration, end, iteration), end);
+				box.start = shortCircuit(FOR.condition, pushScope, makeBlock(FOR.block, pushScope, iterStart, end, iterStart), end);
 				cur.next = box;
 				box.next = end;
 				cur = end;

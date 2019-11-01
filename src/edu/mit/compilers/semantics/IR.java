@@ -399,6 +399,7 @@ public class IR {
 		public Expr initExpr;
 		public Expr condition;
 		public List<Statement> calcCondition; //all AssignmentStatements
+		public List<Statement> iterationStatements; //all AssignmentStatements
 		public AssignmentStatement iteration; //might not be great from a design perspective, but it works
 		public Block block;
 		public ForStatement(IR.Node parent, ParseTree.Node node) {
@@ -423,7 +424,11 @@ public class IR {
 				IR.Node dummy = new CalcConditionHolder(calcCondition);
 				children.add(dummy);
 			}
-			children.add(iteration);
+			if(iterationStatements != null) {
+				IR.Node dummy = new CalcConditionHolder(iterationStatements);
+				children.add(dummy);
+			}
+			else children.add(iteration);
 			children.add(block);
 			return children;
 		}
@@ -1164,7 +1169,7 @@ public class IR {
 							Expr origExpr = new Expr(e); //deep copy
 							LocationNoArray t0 = exprToTempVar(blockpar, e.getT(), origExpr);
 							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, origExpr);
-							e.members.set(0, new Expr(parent, parent.line, t0));
+							e.members.set(0, t0);
 							toProcess.add(a0);
 						}
 					}
@@ -1230,6 +1235,9 @@ public class IR {
 					FOR.calcCondition.add(new AssignmentStatement(block, block.line, tempLoc, Op.Type.assign, FOR.condition));
 					FOR.condition = new Expr(block, block.line, tempLoc);
 				}
+				FOR.iterationStatements = new ArrayList<>();
+				FOR.iterationStatements.add(FOR.iteration);
+				FOR.iteration = null;
 			}
 			else if(st instanceof WhileStatement) {
 				WhileStatement WHILE = (WhileStatement)st;
@@ -1273,6 +1281,7 @@ public class IR {
 			if(st instanceof ForStatement) {
 				ForStatement FOR = (ForStatement)st;
 				fragmentExpr(block, FOR, FOR.calcCondition);
+				fragmentExpr(block, FOR, FOR.iterationStatements);
 			}
 			else if(st instanceof WhileStatement) {
 				WhileStatement WHILE = (WhileStatement)st;
