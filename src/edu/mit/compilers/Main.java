@@ -144,7 +144,6 @@ token.getType() != DecafParserTokenTypes.EOF;
 	    	  Codegen CG = new Codegen(CF);
 	    	  CG.build();
 	    	  List<String> asm = CG.getAsm();
-	    	  //asm.add("call exit");
 	    	  if(CLI.outfile == null) {
 	    		  for(String i: asm)
 	    			  System.out.println(i);

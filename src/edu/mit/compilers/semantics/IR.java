@@ -5,9 +5,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 
 import edu.mit.compilers.Utils;
 
@@ -260,6 +262,12 @@ public class IR {
 	public class Block extends IR.Node {
 		public List<FieldDecl> fields;
 		public List<Statement> statements;
+		public Block(IR.Node parent, AssignmentStatement AS) {
+			super(parent, -1);
+			fields = new ArrayList<>();
+			statements = new ArrayList<>();
+			statements.add(AS);
+		}
 		public Block(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
 			expectType(node, ParseTree.Node.Type.AST_block);
@@ -310,7 +318,7 @@ public class IR {
 		public Location loc;
 		public Op op; //three possible ops: plusequal, minusequal, assignment
 		public Expr assignExpr;
-		public AssignmentStatement(IR.Node parent, int line, LocationNoArray varLoc, Op.Type type, Expr expr) {
+		public AssignmentStatement(IR.Node parent, int line, Location varLoc, Op.Type type, Expr expr) {
 			super(parent, line);
 			this.loc = varLoc;
 			this.op = new Op(this, line, type);
@@ -366,6 +374,7 @@ public class IR {
 		public Expr condition;
 		public Block block;
 		public Block elseBlock;
+		public boolean flip = false;
 		public IfStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
 			expectType(node, ParseTree.Node.Type.AST_statement_if);
@@ -373,6 +382,15 @@ public class IR {
 			block = new Block(this, node.child(4));
 			if(node.children.size() > 6)
 				elseBlock = new Block(this, node.child(6));
+		}
+		public String getText() {
+			return flip? "flip": "";
+		}
+		public IfStatement(Expr expr, boolean flip, AssignmentStatement AS) {
+			super(null, -1);
+			condition = expr;
+			block = new Block(this, AS);
+			this.flip = flip;
 		}
 		public List<IR.Node> getChildren() {
 			List<IR.Node> children = new ArrayList<>();
@@ -399,8 +417,8 @@ public class IR {
 		public LocationNoArray initLoc;
 		public Expr initExpr;
 		public Expr condition;
-		public List<Statement> calcCondition; //all AssignmentStatements
-		public List<Statement> iterationStatements; //all AssignmentStatements
+		public List<Statement> calcCondition; //all Assignment or If
+		public List<Statement> iterationStatements; //all Assignment or If
 		public AssignmentStatement iteration; //might not be great from a design perspective, but it works
 		public Block block;
 		public ForStatement(IR.Node parent, ParseTree.Node node) {
@@ -436,7 +454,7 @@ public class IR {
 	}
 	public class WhileStatement extends Statement {
 		public Expr condition;
-		public List<Statement> calcCondition; //all AssignmentStatement
+		public List<Statement> calcCondition; //all Assignment or If
 		public Block block;
 		public WhileStatement(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
@@ -528,7 +546,7 @@ public class IR {
 		}
 	}
 	public static class Expr extends IR.Node {
-		public List<Node> members;
+		public List<IR.Node> members;
 		public Expr(Expr expr) {
 			super(expr.parent, expr.line);
 			members = new ArrayList<>(expr.members);
@@ -550,6 +568,12 @@ public class IR {
 			super(parent, line);
 			this.members = new ArrayList<>();
 			this.members.add(child);
+		}
+		public Expr(IR.Node parent, int line, Op.Type optype, IR.Node child2) {
+			super(parent, line);
+			this.members = new ArrayList<>();
+			this.members.add(new Op(this, line, optype));
+			this.members.add(child2);
 		}
 		public Expr(IR.Node parent, ParseTree.Node node) {
 			super(parent, node);
@@ -625,7 +649,8 @@ public class IR {
 					}
 					return ans; 
 				}
-				return "any";
+				return "int"; //assume imports return ints
+				//return "any";
 			}
 			if (child1 instanceof IntLiteral){
 				return "int"; 
@@ -1219,6 +1244,126 @@ public class IR {
 			i += toAdd.size();
 		}
 	}
+	private int goExpr(Block blockpar, IR.Node parent, List<Statement> statements) {
+		int changes = 0;
+		for(int i=0; i<statements.size(); i++) {
+			Statement statement = statements.get(i);
+			List<Statement> toAdd = new ArrayList<>(), postAdd = new ArrayList<>();
+			if(statement instanceof AssignmentStatement) {
+				AssignmentStatement AS = (AssignmentStatement)statement;
+				Expr e = AS.assignExpr;
+				if(e == null) {} //inc/dec
+				else if(AS.loc instanceof LocationArray && !isAtomicExpr(((LocationArray)AS.loc).index)) { //LocationArray[non-atomic]
+					LocationArray LA = (LocationArray)AS.loc;
+					LocationNoArray t = exprToTempVar(blockpar, LA.index.getT(), LA.index);
+					AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, LA.index);
+					LA.index = new Expr(parent, parent.line, t);
+					toAdd.add(a0);
+				}
+				//use else if because we don't want to process the right side until the left side is fully simplified (to avoid stuff like calling methods in an array index expression twice)
+				else if(AS.op.type==Op.Type.plusequals || AS.op.type==Op.Type.minusequals) {
+					if(!isAtomicExpr(e)) {
+						Expr origExpr = new Expr(e); //deep copy (kind of)
+						LocationNoArray t0 = exprToTempVar(blockpar, e.getT(), origExpr);
+						AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, origExpr);
+						e.members.clear();
+						e.members.add(t0);
+						toAdd.add(a0);
+					}
+				}
+				else if(e.members.size() == 3) {
+					Expr child0 = (Expr)e.members.get(0);
+					Op op = (Op)e.members.get(1);
+					Expr child2 = (Expr)e.members.get(2);
+					if(op.type == Op.Type.andand) {
+						e.members = child0.members;
+						IfStatement IF = new IfStatement(new Expr(parent, parent.line, AS.loc), false, 
+										 new AssignmentStatement(parent, parent.line, AS.loc, Op.Type.assign, child2));
+						postAdd.add(IF);
+						while(goExpr(IF.block, IF.block, IF.block.statements) > 0) {}
+					}
+					else if(op.type == Op.Type.oror) {
+						e.members = child0.members;
+						IfStatement IF = new IfStatement(new Expr(parent, parent.line, AS.loc), true, 
+										 new AssignmentStatement(parent, parent.line, AS.loc, Op.Type.assign, child2));
+						postAdd.add(IF);
+						while(goExpr(IF.block, IF.block, IF.block.statements) > 0) {}
+					}
+					else {
+						if(!isAtomicExpr(child0)) {
+							LocationNoArray t0 = exprToTempVar(blockpar, child0.getT(), child0);
+							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t0, Op.Type.assign, child0);
+							e.members.set(0, new Expr(parent, parent.line, t0));
+							toAdd.add(a0);
+						}
+						if(!isAtomicExpr(child2)) {
+							LocationNoArray t2 = exprToTempVar(blockpar, child2.getT(), child2);
+							AssignmentStatement a2 = new AssignmentStatement(parent, parent.line, t2, Op.Type.assign, child2);
+							e.members.set(2, new Expr(parent, parent.line, t2));
+							toAdd.add(a2);
+						}
+					}
+				}
+				else if(e.members.size() == 2) {
+					Expr child1 = (Expr)e.members.get(1);
+					if(!isAtomicExpr(child1)) {
+						LocationNoArray t1 = exprToTempVar(blockpar, child1.getT(), child1);
+						AssignmentStatement a1 = new AssignmentStatement(parent, parent.line, t1, Op.Type.assign, child1);
+						e.members.set(1, new Expr(parent, parent.line, t1));
+						toAdd.add(a1);
+					}
+				}
+				else if(e.members.size()==1) {
+					if(!isBasicExpr(e)) { 
+						if(e.members.get(0) instanceof MethodCall) {
+							MethodCall MC = (MethodCall)e.members.get(0);
+							for(int j=MC.params.size()-1; j>=0; j--) {
+								MethodParam param = MC.params.get(j);
+								if(param.val instanceof Expr) {
+									Expr e2 = (Expr)param.val;
+									if(!isAtomicExpr(e2)) {
+										LocationNoArray t = exprToTempVar(blockpar, e2.getT(), e2);
+										AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e2);
+										param.val = new Expr(parent, parent.line, t);
+										toAdd.add(a0);
+									}
+								}
+							}
+						}
+						else { //LocationArray[non-atomic]
+							e.print();
+							LocationArray LA = (LocationArray)e.members.get(0);
+							Expr e2 = LA.index;
+							LocationNoArray t = exprToTempVar(blockpar, e2.getT(), e2);
+							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e2);
+							LA.index = new Expr(parent, parent.line, t);
+							toAdd.add(a0);
+						}
+					}
+				}
+				else throw new IllegalStateException("Expr has bad size, size = " + e.members.size());
+			}
+			else if(statement instanceof MethodCall) {
+				MethodCall MC = (MethodCall)statement;
+				for(MethodParam param: MC.params){
+					if(param.val instanceof Expr) {
+						Expr e = (Expr)param.val;
+						if(!isAtomicExpr(e)) {
+							LocationNoArray t = exprToTempVar(blockpar, e.getT(), e);
+							AssignmentStatement a0 = new AssignmentStatement(parent, parent.line, t, Op.Type.assign, e);
+							param.val = new Expr(parent, parent.line, t);
+							toAdd.add(a0);
+						}
+					}
+				}
+			}
+			statements.addAll(i, toAdd);
+			statements.addAll(i+toAdd.size()+1, postAdd);
+			i += toAdd.size() + postAdd.size();
+			changes += toAdd.size() + postAdd.size();
+		}
+		return changes;
+	}
 	private void processExprInBlock(Block block) {
 		//extract exprs from statements
 		for(int i=0; i<block.statements.size(); i++) {
@@ -1270,6 +1415,25 @@ public class IR {
 			i += toAdd.size();
 		}
 		
+		int changes = 1;
+		while(changes > 0) {
+			changes = 0;
+			changes += goExpr(block, block, block.statements);
+			for(int i=0; i<block.statements.size(); i++) {
+				Statement st = block.statements.get(i);
+				if(st instanceof ForStatement) {
+					ForStatement FOR = (ForStatement)st;
+					changes += goExpr(block, FOR, FOR.calcCondition);
+					changes += goExpr(block, FOR, FOR.iterationStatements);
+				}
+				else if(st instanceof WhileStatement) {
+					WhileStatement WHILE = (WhileStatement)st;
+					changes += goExpr(block, WHILE, WHILE.calcCondition);
+				}
+			}
+		}
+		
+		/*
 		//decouple method calls/exprs/arrays
 		separateCallsAndExprAndArray(block, block, block.statements);
 		for(int i=0; i<block.statements.size(); i++) {
@@ -1277,6 +1441,7 @@ public class IR {
 			if(st instanceof ForStatement) {
 				ForStatement FOR = (ForStatement)st;
 				separateCallsAndExprAndArray(block, FOR, FOR.calcCondition);
+				separateCallsAndExprAndArray(block, FOR, FOR.iterationStatements);
 			}
 			else if(st instanceof WhileStatement) {
 				WhileStatement WHILE = (WhileStatement)st;
@@ -1298,6 +1463,7 @@ public class IR {
 				fragmentExpr(block, WHILE, WHILE.calcCondition);
 			}
 		}
+		*/
 	}
 	/**
 	 * Final guaranteed Expr format:
