@@ -11,6 +11,7 @@ import edu.mit.compilers.codegen.ControlFlow.CFAssignment;
 import edu.mit.compilers.codegen.ControlFlow.CFBranch;
 import edu.mit.compilers.codegen.ControlFlow.CFEndMethod;
 import edu.mit.compilers.codegen.ControlFlow.CFMergeBranch;
+import edu.mit.compilers.codegen.ControlFlow.CFMethod;
 import edu.mit.compilers.codegen.ControlFlow.CFMethodCall;
 import edu.mit.compilers.codegen.ControlFlow.CFNop;
 import edu.mit.compilers.codegen.ControlFlow.CFPushScope;
@@ -29,7 +30,7 @@ public class Codegen {
 	
 	public static class Asm {
 		public enum Op { //newline is just whitespace for formatting
-			methodlabel, label, pushq, movq, popq, ret, custom, newline, xor, call,
+			methodlabel, label, pushq, movq, popq, ret, custom, newline, xor, call, cqto,
 			jz, jnz, test, inc, dec, cmp, jmp, not, neg, string, align, imul, idiv, and, or, leaq,
 			sete, setne, setge, setle, setg, setl, jne, mov, addq, subq, andq, orq, movzx, shr, shl;
 		}
@@ -229,10 +230,13 @@ public class Codegen {
 			return "globalvar(" + reg + ")";
 		}
 	}
-	private void pushScope(long size) {
+	private void pushScope(long size, boolean areMethodParams) {
 		asmOutput.add(new Asm(Asm.Op.pushq, "%rbp"));
 		asmOutput.add(new Asm(Asm.Op.movq, "%rsp", "%rbp"));
-		asmOutput.add(new Asm(Asm.Op.subq, "$" + size, "%rsp"));
+		if(areMethodParams) //don't modify params
+			asmOutput.add(new Asm(Asm.Op.subq, "$" + size, "%rsp"));
+		else for(long i=0; i<size; i+=8)
+			asmOutput.add(new Asm(Asm.Op.pushq, "$0")); //fields should be initialized to 0
 	}
 	private void popScope(long size) {
 		asmOutput.add(new Asm(Asm.Op.addq, "$" + size, "%rsp"));
@@ -248,7 +252,7 @@ public class Codegen {
 		if(CFS instanceof CFPushScope) {
 			CFPushScope CFPS = (CFPushScope)CFS;
 			if(CFPS.stackOffset > 0)
-				pushScope(CFPS.stackOffset);
+				pushScope(CFPS.stackOffset, CFS instanceof CFMethod);
 		}
 		else if(CFS instanceof CFEndMethod) {
 			CFEndMethod CFEM = (CFEndMethod)CFS;
@@ -371,8 +375,11 @@ public class Codegen {
 	private void methodToAsm(String name, ControlFlow.MethodSym method) {
 		CFOrder = new ArrayList<>();
 		genCFOrder(method.code, null);
-		if(name.equals("main"))
+		if(name.equals("main")) {
 			asmOutput.add(new Asm(Asm.Op.custom, ".globl main"));
+			for(int i=0; i<CF.program.stackOffset; i+=8) //initialize global values to 0
+				asmOutput.add(new Asm(Asm.Op.movq, "$0", "" + i + " + globalvar"));
+		}
 		asmOutput.add(new Asm(Asm.Op.methodlabel, name));
 		for(CFStatement i: CFOrder)
 			processCFS(i);
@@ -387,7 +394,7 @@ public class Codegen {
 		//don't add CF.program to scopes because it"s a special global scope
 		if(CF.program.stackOffset > 0) {
 			asmOutput.add(new Asm(Asm.Op.custom, ".comm globalvar, " + CF.program.stackOffset + ", 8"));
-			asmOutput.add(new Asm(Asm.Op.custom, ".comm import_align, 16 , 16"));
+			//asmOutput.add(new Asm(Asm.Op.custom, ".comm import_align, 16 , 16"));
 			asmOutput.add(new Asm(Asm.Op.newline));
 		}
 		for(Map.Entry<String, ControlFlow.MethodSym> method: CF.methods.entrySet())
@@ -638,13 +645,14 @@ public class Codegen {
 				}
 				else if (ctype == IR.Op.Type.div){
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", "%rax"));
-					asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rdx"));
+					asmOutput.add(new Asm(Asm.Op.cqto));
+					//asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rdx")); //what's this for? @shwetark? use cqto instead I think
 					asmOutput.add(new Asm(Asm.Op.idiv, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rax", "%rdi"));
 				}
 				else if (ctype == IR.Op.Type.mod){
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", "%rax"));
-					asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rdx"));
+					asmOutput.add(new Asm(Asm.Op.cqto));
 					asmOutput.add(new Asm(Asm.Op.idiv, "%rsi"));
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdx", "%rdi"));
 				}

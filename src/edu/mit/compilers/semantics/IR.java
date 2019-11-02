@@ -941,7 +941,7 @@ public class IR {
 			super(parent, node);
 			expectType(node, ParseTree.Node.Type.AST_char_literal);
 			node = node.child(0);
-			value = (char)node.text.getBytes()[0];
+			value = (char)node.text.getBytes()[1];
 		}
 		public String getText() {
 			String ret = new String();
