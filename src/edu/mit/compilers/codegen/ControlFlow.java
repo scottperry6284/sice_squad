@@ -102,7 +102,7 @@ public class ControlFlow {
 							cur.next = new CFAssignment(pushScope, AS.line, AS);
 							cur = cur.next;
 						}
-						else cur = processIf(cur, (IR.IfStatement)i, block, pushScope, endBlock, breakCFS, continueCFS);
+						else cur = processIf(cur, (IR.IfStatement)statement, block, pushScope, endBlock, breakCFS, continueCFS);
 					}
 				}
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);
@@ -127,7 +127,7 @@ public class ControlFlow {
 							cur.next = new CFAssignment(pushScope, AS.line, AS);
 							cur = cur.next;
 						}
-						else cur = processIf(cur, (IR.IfStatement)i, block, pushScope, endBlock, breakCFS, continueCFS);
+						else cur = processIf(cur, (IR.IfStatement)statement, block, pushScope, endBlock, breakCFS, continueCFS);
 					}
 				}
 				CFMergeBranch end = new CFMergeBranch(pushScope, i.line);

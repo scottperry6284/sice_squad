@@ -1467,7 +1467,7 @@ public class IR {
 	}
 	/**
 	 * Final guaranteed Expr format:
-	 * atomic -> LocationNoArray | Literal
+	 * atomic -> LocationNoArray | Literal | LocationArray[Literal]
 	 * Expr -> (atomic Op atomic) | (Op atomic) | atomic | LocationArray[atomic] | method_call
 	 * method_call -> MethodName(atomic*)
 	 * If/For/While/Return expr -> atomic

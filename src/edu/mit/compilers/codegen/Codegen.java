@@ -160,37 +160,36 @@ public class Codegen {
 		for (int i = 0; i < Math.min(6, call.params.size()); i++) {
 			processImportCallParam(call, scope, i, 0);
 		}
+		asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rax")); //does this help? doesn't seem so
 		
-		asmOutput.add(new Asm(Asm.Op.pushq, "%rsp"));
-		asmOutput.add(new Asm(Asm.Op.pushq, "(%rsp)"));
+		//save %rsp in callee saved register
+		asmOutput.add(new Asm(Asm.Op.movq, "%rsp", "%r12"));
+		stackAddress = "%r12"; //let %r8 be the stack pointer for now
+		
+		//make divisible by 16
+		asmOutput.add(new Asm(Asm.Op.pushq, "$0"));
 		asmOutput.add(new Asm(Asm.Op.shr, "$4", "%rsp"));
 		asmOutput.add(new Asm(Asm.Op.shl, "$4", "%rsp"));
 		
-		//push arguments on stack in REVERSE for import statements when >6 parameters and maybe modify stack position before/after
-		
+		//push arguments on stack in reverse for import statements when >6 parameters
 		if(call.params.size() > 6) {
-			asmOutput.add(new Asm(Asm.Op.movq, "$0", "%rax")); //does this help? doesn't seem so
-			long additionalOffset = 2 * ControlFlow.wordSize;
-			if(call.params.size()%2 == 1) {
-				asmOutput.add(new Asm(Asm.Op.pushq, "$0")); //dummy
-				additionalOffset += ControlFlow.wordSize;
-			}
-			for(int i=call.params.size()-1; i>=6; i--, additionalOffset+=ControlFlow.wordSize)
-				processImportCallParam(call, scope, i, additionalOffset);
+			//ensure 16 alignment
+			if(call.params.size() % 2 == 1)
+				asmOutput.add(new Asm(Asm.Op.pushq, "$0"));
+			//push arguments
+			for(int i=call.params.size()-1; i>=6; i--)
+				processImportCallParam(call, scope, i, 0); //4th arg deprecated?
 		}
 		
 		// Make method call.
 		asmOutput.add(new Asm(Asm.Op.call, call.ID));
 		
-		if(call.params.size() > 6) {
-			asmOutput.add(new Asm(Asm.Op.addq, "$" + (((call.params.size()-6+1)/2)*2*ControlFlow.wordSize), "%rsp"));
-		}
-		
-		asmOutput.add(new Asm(Asm.Op.addq, "$8", "%rsp")); //jack said add, but I'm using addq
-		asmOutput.add(new Asm(Asm.Op.movq, "(%rsp)", "%rsp"));
-		
+		//restore %rsp
+		asmOutput.add(new Asm(Asm.Op.movq, "%r12", "%rsp"));
+		stackAddress = "%rsp";
 	}
 	private int vLocCount = 0;
+	String stackAddress = "%rsp";
 	private String getVarLoc(IR.Location loc, CFPushScope scope) {
 		return getVarLoc(loc, scope, 0);
 	}
@@ -212,8 +211,8 @@ public class Codegen {
 		while(scope != null) {
 			if(scope.variables.containsKey(name)) {
 				if(reg == null)
-					return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(%rsp)";
-				else return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(%rsp, " + reg + ", " + ControlFlow.wordSize + ")";
+					return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(" + stackAddress + ")";
+				else return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(" + stackAddress + ", " + reg + ", " + ControlFlow.wordSize + ")";
 			}
 			if(scope.stackOffset != 0)
 				stackOffset += scope.stackOffset + ControlFlow.wordSize; //+wordSize because we push rbp and a filler 8 if stackOffset!=0
@@ -445,13 +444,13 @@ public class Codegen {
 			else if (t_op == IR.Op.Type.plusequals){
 				IR.Node child2 = expr.members.get(0); 
 				// rdi temp register
-				if (child2 instanceof IR.IntLiteral){
-					IR.IntLiteral c2 = (IR.IntLiteral) child2;
-					asmOutput.add(new Asm(Asm.Op.movq, "$" + c2.getText(), "%rdi")); 
+				if (child2 instanceof IR.Literal){
+					IR.Literal c2 = (IR.Literal) child2;
+					asmOutput.add(new Asm(Asm.Op.movq, "$" + c2.val(), "%rdi")); 
 					asmOutput.add(new Asm(Asm.Op.addq, "%rdi", location));
 				}
-				else if (child2 instanceof IR.LocationNoArray){
-					IR.LocationNoArray c2 = (IR.LocationNoArray) child2; 
+				else if (child2 instanceof IR.Location){
+					IR.Location c2 = (IR.Location) child2; 
 					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi")); 
 					asmOutput.add(new Asm(Asm.Op.addq, "%rdi", location));
 				}				
@@ -459,13 +458,13 @@ public class Codegen {
 			else if (t_op == IR.Op.Type.minusequals){
 				IR.Node child2 = expr.members.get(0); 
 				// rdi temp register
-				if (child2 instanceof IR.Node){
+				if (child2 instanceof IR.Literal){
 					IR.IntLiteral c2 = (IR.IntLiteral) child2;
-					asmOutput.add(new Asm(Asm.Op.movq, "$" + c2.getText(), "%rdi")); 
+					asmOutput.add(new Asm(Asm.Op.movq, "$" + c2.val(), "%rdi")); 
 					asmOutput.add(new Asm(Asm.Op.subq, "%rdi", location));
 				}
-				else if (child2 instanceof IR.LocationNoArray){
-					IR.LocationNoArray c2 = (IR.LocationNoArray) child2; 
+				else if (child2 instanceof IR.Location){
+					IR.Location c2 = (IR.Location) child2; 
 					asmOutput.add(new Asm(Asm.Op.movq, getVarLoc(c2, scope), "%rdi")); 
 					asmOutput.add(new Asm(Asm.Op.subq, "%rdi", location));
 				}				
