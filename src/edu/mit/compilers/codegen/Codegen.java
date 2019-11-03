@@ -30,7 +30,7 @@ public class Codegen {
 	
 	public static class Asm {
 		public enum Op { //newline is just whitespace for formatting
-			methodlabel, label, pushq, movq, popq, ret, custom, newline, xor, call, cqto,
+			methodlabel, label, pushq, movq, popq, ret, custom, newline, xor, call, cqto, movl, jge, jl,
 			jz, jnz, test, inc, dec, cmp, jmp, not, neg, string, align, imul, idiv, and, or, leaq,
 			sete, setne, setge, setle, setg, setl, jne, mov, addq, subq, andq, orq, movzx, shr, shl;
 		}
@@ -189,31 +189,69 @@ public class Codegen {
 		asmOutput.add(new Asm(Asm.Op.movq, "%r12", "%rsp"));
 		stackAddress = "%rsp";
 	}
+	private void checkForArrayBounds(long len, String idxLoc) {
+		String label = "array_check" + vLocCount;
+		asmOutput.add(new Asm(Asm.Op.movq, idxLoc, "%r13"));
+		
+		//check that index isn't past the end of the array
+		asmOutput.add(new Asm(Asm.Op.cmp, "$" + len, "%r13"));
+		asmOutput.add(new Asm(Asm.Op.jl, label));
+		//runtime error (might be jumped over)
+		asmOutput.add(new Asm(Asm.Op.movl, "$1", "%edi"));
+		asmOutput.add(new Asm(Asm.Op.call, "exit"));
+		asmOutput.add(new Asm(Asm.Op.label, label));
+		
+		//check that index is positive
+		label += "_";
+		asmOutput.add(new Asm(Asm.Op.cmp, "$0", "%r13"));
+		asmOutput.add(new Asm(Asm.Op.jge, label));
+		//runtime error (might be jumped over)
+		asmOutput.add(new Asm(Asm.Op.movl, "$1", "%edi"));
+		asmOutput.add(new Asm(Asm.Op.call, "exit"));
+		
+		//label to skip runtime error
+		asmOutput.add(new Asm(Asm.Op.label, label));
+	}
 	private int vLocCount = 0;
 	String stackAddress = "%rsp";
 	private String getVarLoc(IR.Location loc, CFPushScope scope) {
 		return getVarLoc(loc, scope, 0);
 	}
 	private String getVarLoc(IR.Location loc, CFPushScope scope, long additionalOffset) {
-		vLocCount++;
 		String name = loc.ID;
 		long stackOffset = additionalOffset, arrayOffset = 0;
 		String reg = null;
+		IR.Node idx = null;
+		String idxLoc = null;
 		if(loc instanceof IR.LocationArray) {
-			IR.Node idx = ((IR.LocationArray)(loc)).index.members.get(0);
-			if(idx instanceof IR.Literal)
-				arrayOffset = ((IR.Literal)idx).val() * ControlFlow.wordSize;
+			idx = ((IR.LocationArray)(loc)).index.members.get(0);
+			if(idx instanceof IR.Literal) {
+				long i = ((IR.Literal)idx).val();
+				arrayOffset = i * ControlFlow.wordSize;
+			}
 			else {
+				//store array indices in %rbx and %rcx. alternating so that stuff like a[i] = a[j] works
+				vLocCount++;
 				reg = vLocCount%2==0? "%rbx": "%rcx";
-				asmOutput.add(new Asm(Asm.Op.movq, getVarLoc((IR.Location)idx, scope), reg));
+				idxLoc = getVarLoc((IR.Location)idx, scope);
+				asmOutput.add(new Asm(Asm.Op.movq, idxLoc, reg));
 			}
 		}
 		//for variable indices, do other stuff
 		while(scope != null) {
 			if(scope.variables.containsKey(name)) {
-				if(reg == null)
+				if(reg == null) {
+					if(idx!=null && ((IR.Literal)idx).val()>=scope.variables.get(name).len) {
+						//runtime error
+						asmOutput.add(new Asm(Asm.Op.movl, "$1", "%edi"));
+						asmOutput.add(new Asm(Asm.Op.call, "exit"));
+					}
 					return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(" + stackAddress + ")";
-				else return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(" + stackAddress + ", " + reg + ", " + ControlFlow.wordSize + ")";
+				}
+				else {
+					checkForArrayBounds(scope.variables.get(name).len, idxLoc);
+					return (stackOffset + arrayOffset + scope.variables.get(name).stackOffset) + "(" + stackAddress + ", " + reg + ", " + ControlFlow.wordSize + ")";
+				}
 			}
 			if(scope.stackOffset != 0)
 				stackOffset += scope.stackOffset + ControlFlow.wordSize; //+wordSize because we push rbp and a filler 8 if stackOffset!=0
@@ -222,11 +260,20 @@ public class Codegen {
 		//it's in the global scope
 		if(!CF.program.variables.containsKey(name))
 			throw new IllegalStateException("Variable with name \"" + name + "\" not found in any scope");
-		if(reg == null)
+		if(reg == null) {
+			if(idx!=null && ((IR.Literal)idx).val()>=CF.program.variables.get(name).len) {
+				//runtime error
+				asmOutput.add(new Asm(Asm.Op.movl, "$1", "%edi"));
+				asmOutput.add(new Asm(Asm.Op.call, "exit"));
+			}
 			return (arrayOffset + CF.program.variables.get(name).stackOffset) + " + globalvar";
+		}
 		else {
+			checkForArrayBounds(CF.program.variables.get(name).len, idxLoc);
 			asmOutput.add(new Asm(Asm.Op.imul, "$" + ControlFlow.wordSize, reg));
-			asmOutput.add(new Asm(Asm.Op.addq, "$" + CF.program.variables.get(name).stackOffset, reg));
+			long offset = CF.program.variables.get(name).stackOffset;
+			if(offset != 0)
+				asmOutput.add(new Asm(Asm.Op.addq, "$" + offset, reg));
 			return "globalvar(" + reg + ")";
 		}
 	}
@@ -269,6 +316,11 @@ public class Codegen {
 					CFPS = CFPS.parent;
 				}
 				asmOutput.add(new Asm(Asm.Op.ret));
+			}
+			else {
+				//runtime error
+				asmOutput.add(new Asm(Asm.Op.movl, "$2", "%edi"));
+				asmOutput.add(new Asm(Asm.Op.call, "exit"));
 			}
 			return;
 		}
@@ -402,7 +454,7 @@ public class Codegen {
 
 		Set<String> usedLabels = new HashSet<>();
 		for(Asm i: asmOutput)
-			if(i.op==Asm.Op.jz || i.op==Asm.Op.jmp || i.op==Asm.Op.jz || i.op==Asm.Op.jne)
+			if(i.op==Asm.Op.jz || i.op==Asm.Op.jmp || i.op==Asm.Op.jz || i.op==Asm.Op.jne || i.op==Asm.Op.jge || i.op==Asm.Op.jl)
 				usedLabels.add(i.arg1);
 		asmOutput.removeIf(x -> x.op==Asm.Op.label && !usedLabels.contains(x.arg1));
 	}
@@ -500,7 +552,7 @@ public class Codegen {
 					asmOutput.add(new Asm(Asm.Op.movq, "%rdi", location));
 				}
 			}
-			if (op.type == IR.Op.Type.not){
+			else if (op.type == IR.Op.Type.not){
 				IR.Expr lm2 = (IR.Expr)(expr.members.get(1)); 
 				IR.Node child2 = lm2.members.get(0); 
 				// rdi temp register

@@ -1154,7 +1154,6 @@ public class IR {
 							}
 						}
 						else { //LocationArray[non-atomic]
-							e.print();
 							LocationArray LA = (LocationArray)e.members.get(0);
 							Expr e2 = LA.index;
 							LocationNoArray t = exprToTempVar(blockpar, e2.getT(), e2);
