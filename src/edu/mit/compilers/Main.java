@@ -110,7 +110,7 @@ token.getType() != DecafParserTokenTypes.EOF;
           Semantics.check18 (irbuilder.root);
           Semantics.check13 (irbuilder.root);
           System.out.println("----------------------------");
-          irbuilder.simplifyExpr();
+          //irbuilder.simplifyExpr();
           System.out.println("----------------------------");
           irbuilder.root.print();
 	      }
