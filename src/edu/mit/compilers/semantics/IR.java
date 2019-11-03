@@ -1245,6 +1245,9 @@ public class IR {
 		}
 	}
 	private int goExpr(Block blockpar, IR.Node parent, List<Statement> statements) {
+		if (statements == null){
+			return 0;
+		}
 		int changes = 0;
 		for(int i=0; i<statements.size(); i++) {
 			Statement statement = statements.get(i);
